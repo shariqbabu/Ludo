@@ -2,781 +2,544 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Ludo Game</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  background: #1a1a2e;
+  background: #020617;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   min-height: 100vh;
-  font-family: Arial, sans-serif;
-  padding: 10px;
+  font-family: 'Arial', sans-serif;
+  overflow-x: hidden;
+  padding: 8px;
 }
 
-h1 {
+.game-title {
   color: #fff;
-  margin-bottom: 10px;
-  font-size: 24px;
+  font-size: clamp(16px, 4vw, 22px);
+  font-weight: 800;
+  letter-spacing: 3px;
+  margin: 6px 0;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #60a5fa, #34d399, #f59e0b, #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.game-wrapper {
+.board-container {
   position: relative;
-  display: inline-block;
+  width: min(96vw, 96vh, 540px);
+  height: min(96vw, 96vh, 540px);
+  max-width: 540px;
+  max-height: 540px;
 }
 
-#mainCanvas {
-  border-radius: 12px;
+.board-container svg {
+  width: 100%;
+  height: 100%;
   display: block;
-  cursor: pointer;
 }
 
-.controls {
-  margin-top: 12px;
+#pawnCanvas {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.bottom-ui {
+  width: min(96vw, 540px);
+  margin-top: 8px;
   display: flex;
-  gap: 10px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.btn {
-  padding: 12px 28px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: transform 0.1s;
-}
-.btn:active { transform: scale(0.95); }
-.btn-roll { background: #f39c12; color: #fff; }
-.btn-reset { background: #e74c3c; color: #fff; }
-
-.info {
-  margin-top: 10px;
-  color: #fff;
-  font-size: 15px;
-  text-align: center;
-  background: rgba(0,0,0,0.5);
-  padding: 8px 16px;
-  border-radius: 8px;
-  min-width: 280px;
-}
-
-.badges {
+.player-info-row {
   display: flex;
   gap: 8px;
-  margin-top: 6px;
   justify-content: center;
 }
 
-.badge {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: bold;
-  opacity: 0.4;
+.player-card {
+  flex: 1;
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 8px;
+  text-align: center;
+  border: 1.5px solid #334155;
   transition: all 0.3s;
-}
-.badge.active {
-  opacity: 1;
-  transform: scale(1.15);
-  box-shadow: 0 0 8px rgba(255,255,255,0.6);
+  max-width: 130px;
 }
 
-#statusText { min-height: 20px; }
+.player-card.active {
+  border-color: #60a5fa;
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.4);
+  transform: scale(1.03);
+}
+
+.player-card.active.red { border-color: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.4); }
+.player-card.active.green { border-color: #34d399; box-shadow: 0 0 12px rgba(52,211,153,0.4); }
+.player-card.active.yellow { border-color: #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,0.4); }
+.player-card.active.blue { border-color: #60a5fa; box-shadow: 0 0 12px rgba(96,165,250,0.4); }
+
+.player-name {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.player-name.red { color: #ef4444; }
+.player-name.green { color: #34d399; }
+.player-name.yellow { color: #f59e0b; }
+.player-name.blue { color: #60a5fa; }
+
+.score-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  margin: 0 auto 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  position: relative;
+}
+
+.score-circle.red { background: radial-gradient(circle, #991b1b, #450a0a); border: 2px solid #ef4444; }
+.score-circle.green { background: radial-gradient(circle, #065f46, #064e3b); border: 2px solid #34d399; }
+.score-circle.yellow { background: radial-gradient(circle, #b45309, #78350f); border: 2px solid #f59e0b; }
+.score-circle.blue { background: radial-gradient(circle, #1d4ed8, #1e3a8a); border: 2px solid #60a5fa; }
+
+.pawn-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.pawn-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.3);
+  transition: all 0.3s;
+}
+
+.pawn-dot.active { opacity: 1; box-shadow: 0 0 6px currentColor; }
+.pawn-dot.inactive { opacity: 0.3; }
+.pawn-dot.done { opacity: 1; }
+.pawn-dot.red { background: #ef4444; color: #ef4444; }
+.pawn-dot.green { background: #34d399; color: #34d399; }
+.pawn-dot.yellow { background: #f59e0b; color: #f59e0b; }
+.pawn-dot.blue { background: #60a5fa; color: #60a5fa; }
+
+.dice-roll-area {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  border-radius: 14px;
+  padding: 10px 16px;
+  border: 1.5px solid #334155;
+  gap: 10px;
+}
+
+.status-text {
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.dice-box {
+  width: 56px;
+  height: 56px;
+  background: #1e293b;
+  border-radius: 12px;
+  border: 2px solid #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+  user-select: none;
+}
+
+.dice-box:active { transform: scale(0.92); }
+.dice-box.rolling { animation: diceShake 0.08s infinite; }
+.dice-box.clickable { border-color: #60a5fa; box-shadow: 0 0 15px rgba(96,165,250,0.5); cursor: pointer; }
+.dice-box.disabled { opacity: 0.5; cursor: not-allowed; }
+
+@keyframes diceShake {
+  0%,100% { transform: rotate(-5deg) scale(0.95); }
+  50% { transform: rotate(5deg) scale(1.05); }
+}
+
+.dice-svg { width: 40px; height: 40px; }
+
+.btn-roll {
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+.btn-roll:active { transform: scale(0.95); }
+.btn-roll:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-reset {
+  background: linear-gradient(135deg, #7f1d1d, #991b1b);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-reset:active { transform: scale(0.95); }
+
+.movable-hint {
+  text-align: center;
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+  animation: blink 1s infinite;
+  min-height: 16px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Pawn canvas pointer events */
+#pawnCanvas { pointer-events: all !important; }
 </style>
 </head>
 <body>
 
-<h1>🎲 Ludo Game</h1>
+<div class="game-title">🎲 Ludo</div>
 
-<div class="game-wrapper">
-  <canvas id="mainCanvas" width="540" height="540"></canvas>
+<div class="board-container">
+  <!-- SVG BOARD -->
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" width="100%" height="100%">
+    <defs>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="10" stdDeviation="15" flood-color="#000000" flood-opacity="0.8"/>
+      </filter>
+      <filter id="path-glow-red" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feFlood flood-color="#7f1d1d" flood-opacity="0.3" result="color"/>
+        <feComposite in="color" in2="blur" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="path-glow-green" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feFlood flood-color="#065f46" flood-opacity="0.3" result="color"/>
+        <feComposite in="color" in2="blur" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="path-glow-yellow" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feFlood flood-color="#92400e" flood-opacity="0.3" result="color"/>
+        <feComposite in="color" in2="blur" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <filter id="path-glow-blue" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="8" result="blur"/>
+        <feFlood flood-color="#1e40af" flood-opacity="0.3" result="color"/>
+        <feComposite in="color" in2="blur" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <linearGradient id="mid-red" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#991b1b"/><stop offset="100%" stop-color="#450a0a"/>
+      </linearGradient>
+      <linearGradient id="mid-green" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#065f46"/><stop offset="100%" stop-color="#064e3b"/>
+      </linearGradient>
+      <linearGradient id="mid-yellow" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#b45309"/><stop offset="100%" stop-color="#78350f"/>
+      </linearGradient>
+      <linearGradient id="mid-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#1e3a8a"/>
+      </linearGradient>
+      <pattern id="cell" width="60" height="60" patternUnits="userSpaceOnUse">
+        <rect x="2" y="2" width="56" height="56" rx="8" fill="#0f172a"/>
+        <rect x="4" y="4" width="52" height="48" rx="6" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+      </pattern>
+      <g id="star">
+        <polygon points="30,15 34,25 45,25 36,32 39,42 30,36 21,42 24,32 15,25 26,25" fill="#ffffff" opacity="0.6"/>
+      </g>
+    </defs>
+    <rect width="900" height="900" fill="#020617" rx="40"/>
+    <g id="grid">
+      <rect x="0" y="360" width="900" height="180" fill="url(#cell)"/>
+      <rect x="360" y="0" width="180" height="900" fill="url(#cell)"/>
+    </g>
+    <g id="middle-paths-highlighted">
+      <g filter="url(#path-glow-red)">
+        <rect x="60" y="420" width="300" height="60" rx="10" fill="url(#mid-red)" stroke="#7f1d1d" stroke-width="2"/>
+        <path d="M120 420 v60 M180 420 v60 M240 420 v60 M300 420 v60" stroke="#000000" stroke-opacity="0.3" stroke-width="2"/>
+      </g>
+      <rect x="60" y="360" width="60" height="60" rx="10" fill="url(#mid-red)"/>
+      <use href="#star" x="60" y="360"/>
+      <g filter="url(#path-glow-green)">
+        <rect x="420" y="60" width="60" height="300" rx="10" fill="url(#mid-green)" stroke="#065f46" stroke-width="2"/>
+        <path d="M420 120 h60 M420 180 h60 M420 240 h60 M420 300 h60" stroke="#000000" stroke-opacity="0.3" stroke-width="2"/>
+      </g>
+      <rect x="480" y="60" width="60" height="60" rx="10" fill="url(#mid-green)"/>
+      <use href="#star" x="480" y="60"/>
+      <g filter="url(#path-glow-yellow)">
+        <rect x="540" y="420" width="300" height="60" rx="10" fill="url(#mid-yellow)" stroke="#92400e" stroke-width="2"/>
+        <path d="M600 420 v60 M660 420 v60 M720 420 v60 M780 420 v60" stroke="#000000" stroke-opacity="0.3" stroke-width="2"/>
+      </g>
+      <rect x="780" y="480" width="60" height="60" rx="10" fill="url(#mid-yellow)"/>
+      <use href="#star" x="780" y="480"/>
+      <g filter="url(#path-glow-blue)">
+        <rect x="420" y="540" width="60" height="300" rx="10" fill="url(#mid-blue)" stroke="#1e40af" stroke-width="2"/>
+        <path d="M420 600 h60 M420 660 h60 M420 720 h60 M420 780 h60" stroke="#000000" stroke-opacity="0.3" stroke-width="2"/>
+      </g>
+      <rect x="360" y="780" width="60" height="60" rx="10" fill="url(#mid-blue)"/>
+      <use href="#star" x="360" y="780"/>
+    </g>
+    <g id="center" filter="url(#shadow)">
+      <polygon points="360,360 450,450 360,540" fill="url(#mid-red)" stroke="#020617" stroke-width="3"/>
+      <polygon points="360,360 540,360 450,450" fill="url(#mid-green)" stroke="#020617" stroke-width="3"/>
+      <polygon points="540,360 540,540 450,450" fill="url(#mid-yellow)" stroke="#020617" stroke-width="3"/>
+      <polygon points="360,540 450,450 540,540" fill="url(#mid-blue)" stroke="#020617" stroke-width="3"/>
+      <circle cx="450" cy="450" r="25" fill="#020617" stroke="#ffffff" stroke-opacity="0.1" stroke-width="2"/>
+    </g>
+    <!-- TOP-LEFT Red base -->
+    <rect x="30" y="30" width="300" height="300" rx="40" fill="#0f172a" stroke="#7f1d1d" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="48" y="48" width="264" height="264" rx="28" fill="none" stroke="#7f1d1d" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+    <circle cx="180" cy="180" r="85" fill="none" stroke="#7f1d1d" stroke-width="2.5" opacity="0.4"/>
+    <circle cx="180" cy="180" r="82" fill="#0a0f1e"/>
+    <text x="180" y="168" font-size="11" font-weight="700" font-family="sans-serif" fill="#ef4444" text-anchor="middle" letter-spacing="2" opacity="0.8">RED</text>
+    <text x="180" y="195" font-size="28" font-weight="800" font-family="sans-serif" fill="#ef4444" text-anchor="middle" opacity="0.9" id="scoreRedSVG">0</text>
+    <!-- TOP-RIGHT Green base -->
+    <rect x="570" y="30" width="300" height="300" rx="40" fill="#0f172a" stroke="#065f46" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="588" y="48" width="264" height="264" rx="28" fill="none" stroke="#065f46" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+    <circle cx="720" cy="180" r="85" fill="none" stroke="#34d399" stroke-width="2.5" opacity="0.4"/>
+    <circle cx="720" cy="180" r="82" fill="#0a0f1e"/>
+    <text x="720" y="168" font-size="11" font-weight="700" font-family="sans-serif" fill="#34d399" text-anchor="middle" letter-spacing="2" opacity="0.8">GREEN</text>
+    <text x="720" y="195" font-size="28" font-weight="800" font-family="sans-serif" fill="#34d399" text-anchor="middle" opacity="0.9" id="scoreGreenSVG">0</text>
+    <!-- BOTTOM-RIGHT Yellow base -->
+    <rect x="570" y="570" width="300" height="300" rx="40" fill="#0f172a" stroke="#92400e" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="588" y="588" width="264" height="264" rx="28" fill="none" stroke="#92400e" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+    <circle cx="720" cy="720" r="85" fill="none" stroke="#f59e0b" stroke-width="2.5" opacity="0.4"/>
+    <circle cx="720" cy="720" r="82" fill="#0a0f1e"/>
+    <text x="720" y="708" font-size="11" font-weight="700" font-family="sans-serif" fill="#f59e0b" text-anchor="middle" letter-spacing="2" opacity="0.8">YELLOW</text>
+    <text x="720" y="735" font-size="28" font-weight="800" font-family="sans-serif" fill="#f59e0b" text-anchor="middle" opacity="0.9" id="scoreYellowSVG">0</text>
+    <!-- BOTTOM-LEFT Blue base -->
+    <rect x="30" y="570" width="300" height="300" rx="40" fill="#0f172a" stroke="#1e40af" stroke-width="3" filter="url(#shadow)"/>
+    <rect x="48" y="588" width="264" height="264" rx="28" fill="none" stroke="#1e40af" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+    <circle cx="180" cy="720" r="85" fill="none" stroke="#60a5fa" stroke-width="2.5" opacity="0.4"/>
+    <circle cx="180" cy="720" r="82" fill="#0a0f1e"/>
+    <text x="180" y="708" font-size="11" font-weight="700" font-family="sans-serif" fill="#60a5fa" text-anchor="middle" letter-spacing="2" opacity="0.8">YOU</text>
+    <text x="180" y="735" font-size="28" font-weight="800" font-family="sans-serif" fill="#60a5fa" text-anchor="middle" opacity="0.9" id="scoreBlueSVG">0</text>
+  </svg>
+
+  <!-- PAWN CANVAS overlaid -->
+  <canvas id="pawnCanvas"></canvas>
 </div>
 
-<div class="info">
-  <div id="statusText">Click Roll Dice to Start!</div>
-  <div class="badges">
-    <div class="badge active" id="b0" style="background:#1565C0">🔵 Blue</div>
-    <div class="badge" id="b1" style="background:#c62828">🔴 Red</div>
-    <div class="badge" id="b2" style="background:#2e7d32">🟢 Green</div>
-    <div class="badge" id="b3" style="background:#f9a825;color:#333">🟡 Yellow</div>
+<div class="bottom-ui">
+  <!-- Player Info Row -->
+  <div class="player-info-row">
+    <div class="player-card red" id="card-red">
+      <div class="player-name red">🔴 Red</div>
+      <div class="score-circle red" id="score-red">0</div>
+      <div class="pawn-dots" id="dots-red"></div>
+    </div>
+    <div class="player-card green" id="card-green">
+      <div class="player-name green">🟢 Green</div>
+      <div class="score-circle green" id="score-green">0</div>
+      <div class="pawn-dots" id="dots-green"></div>
+    </div>
+    <div class="player-card yellow" id="card-yellow">
+      <div class="player-name yellow">🟡 Yellow</div>
+      <div class="score-circle yellow" id="score-yellow">0</div>
+      <div class="pawn-dots" id="dots-yellow"></div>
+    </div>
+    <div class="player-card blue active" id="card-blue">
+      <div class="player-name blue">🔵 You</div>
+      <div class="score-circle blue" id="score-blue">0</div>
+      <div class="pawn-dots" id="dots-blue"></div>
+    </div>
   </div>
-</div>
 
-<div class="controls">
-  <button class="btn btn-roll" id="rollBtn" onclick="rollDice()">🎲 Roll Dice</button>
-  <button class="btn btn-reset" onclick="resetGame()">🔄 Reset</button>
-</div>
+  <!-- Dice & Status -->
+  <div class="dice-roll-area">
+    <div id="diceBox" class="dice-box clickable" onclick="rollDice()">
+      <svg class="dice-svg" id="diceSVG" viewBox="0 0 40 40">
+        <rect x="2" y="2" width="36" height="36" rx="7" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+        <text x="20" y="27" font-size="20" text-anchor="middle" fill="#94a3b8">?</text>
+      </svg>
+    </div>
+    <div class="status-text" id="statusText">Tap dice to roll!</div>
+    <button class="btn-roll" id="rollBtn" onclick="rollDice()">🎲 Roll</button>
+    <button class="btn-reset" onclick="resetGame()">↺</button>
+  </div>
 
-<canvas id="diceCanvas" width="70" height="70" style="margin-top:8px; display:block; margin-left:auto; margin-right:auto;"></canvas>
+  <div class="movable-hint" id="hintText"></div>
+</div>
 
 <script>
-const canvas = document.getElementById('mainCanvas');
-const ctx = canvas.getContext('2d');
-const diceCanvas = document.getElementById('diceCanvas');
-const dctx = diceCanvas.getContext('2d');
+// ============================================================
+// BOARD CONSTANTS (SVG viewBox = 900x900)
+// ============================================================
+const SVG_SIZE = 900;
+const CELL = 60; // each cell = 60px in SVG coords
 
-const SIZE = 540;
-const CELLS = 15;
-const C = SIZE / CELLS; // 36px per cell
+// Canvas setup
+const pawnCanvas = document.getElementById('pawnCanvas');
+const ctx = pawnCanvas.getContext('2d');
 
-// =====================
-// BOARD DRAWING
-// =====================
-const boardImg = new Image();
-boardImg.src = 'board.png';
+function resizeCanvas() {
+  const container = document.querySelector('.board-container');
+  const rect = container.getBoundingClientRect();
+  pawnCanvas.width = rect.width;
+  pawnCanvas.height = rect.height;
+  drawAll();
+}
 
-let imgLoaded = false;
-boardImg.onload = () => { imgLoaded = true; drawAll(); };
-boardImg.onerror = () => { imgLoaded = false; drawAll(); };
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 100);
 
-// =====================
-// PATH DEFINITION
-// =====================
-// 52 main cells + home entries
-// [col, row] 0-indexed, 15x15 grid
+// Scale from SVG coords to canvas coords
+function scale(v) {
+  return v * (pawnCanvas.width / SVG_SIZE);
+}
 
-function buildMainPath() {
+// ============================================================
+// ACCURATE 52-CELL PATH (SVG coordinates, center of each cell)
+// SVG cell size = 60, path cells in 15x15 grid
+// col/row → x = col*60+30, y = row*60+30
+// ============================================================
+function cellCenter(col, row) {
+  return { x: col * CELL + CELL / 2, y: row * CELL + CELL / 2 };
+}
+
+// Build 52-cell main path (col, row) — verified standard Ludo
+function buildPath52() {
   let p = [];
-  // Left col going UP: col=1, row 12 to 7
+  // LEFT column going UP: col=1, row=12→7
   for (let r = 12; r >= 7; r--) p.push([1, r]);      // 0-5
-  // Middle row LEFT going RIGHT: row=6, col 1-5
+  // TOP-LEFT going RIGHT: row=6, col=1→5
   for (let c = 1; c <= 5; c++) p.push([c, 6]);        // 6-10
-  // Top-left channel UP: col=6, row 5-0
+  // UP channel: col=6, row=5→0
   for (let r = 5; r >= 0; r--) p.push([6, r]);        // 11-16
-  // Top row RIGHT: row=0, col 7,8
+  // TOP going RIGHT: row=0, col=7,8
   p.push([7, 0]); p.push([8, 0]);                     // 17-18
-  // Top-right channel DOWN: col=8, row 1-5
+  // RIGHT-TOP channel DOWN: col=8, row=1→5
   for (let r = 1; r <= 5; r++) p.push([8, r]);        // 19-23
-  // Middle row RIGHT: row=6, col 9-13
+  // TOP-RIGHT going RIGHT: row=6, col=9→13
   for (let c = 9; c <= 13; c++) p.push([c, 6]);       // 24-28
-  // Right col going DOWN: col=13, row 7-12
+  // RIGHT column DOWN: col=13, row=7→12
   for (let r = 7; r <= 12; r++) p.push([13, r]);      // 29-34
-  // Middle row RIGHT going LEFT: row=8, col 13-9
+  // BOTTOM-RIGHT going LEFT: row=8, col=13→9
   for (let c = 13; c >= 9; c--) p.push([c, 8]);       // 35-39
-  // Bottom-right channel DOWN: col=8, row 9-13
+  // BOTTOM-RIGHT channel DOWN: col=8, row=9→13
   for (let r = 9; r <= 13; r++) p.push([8, r]);       // 40-44
-  // Bottom row LEFT: row=13, col 7,6
+  // BOTTOM going LEFT: row=13, col=7,6
   p.push([7, 13]); p.push([6, 13]);                   // 45-46
-  // Bottom-left channel UP: col=6, row 12-8
+  // BOTTOM-LEFT channel UP: col=6, row=12→8
   for (let r = 12; r >= 8; r--) p.push([6, r]);       // 47-51
-  // Total: 6+5+6+2+5+5+6+5+5+2+5 = 52 ✓
-  return p;
+  return p; // 52 total
 }
 
-const PATH = buildMainPath();
-console.log('Path cells:', PATH.length); // Should be 52
+const PATH52 = buildPath52();
+console.assert(PATH52.length === 52, 'Path must be 52');
 
-// Home column paths (6 cells leading to center)
-const HOME_PATH = {
-  blue:   [[2,7],[3,7],[4,7],[5,7],[6,7],[7,7]],
-  red:    [[7,2],[7,3],[7,4],[7,5],[7,6],[7,7]],
-  green:  [[12,7],[11,7],[10,7],[9,7],[8,7],[7,7]],
-  yellow: [[7,12],[7,11],[7,10],[7,9],[7,8],[7,7]]
+// Home column paths (leading to center at 7,7)
+const HOME_COLS = {
+  red:    [[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],      // going RIGHT → center
+  green:  [[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],      // going DOWN → center
+  yellow: [[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],  // going LEFT → center
+  blue:   [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]]   // going UP → center
 };
 
-// Player start index on PATH (where pawn enters after rolling 6)
-const START = { blue: 0, red: 13, green: 26, yellow: 39 };
+// Where each player ENTERS the main path (absolute index in PATH52)
+const ENTRY = { red: 0, green: 13, yellow: 26, blue: 39 };
 
-// Home base positions for 4 pawns
-const BASES = {
-  blue:   [[2,2],[4,2],[2,4],[4,4]],
-  red:    [[10,2],[12,2],[10,4],[12,4]],
-  green:  [[10,10],[12,10],[10,12],[12,12]],
-  yellow: [[2,10],[4,10],[2,12],[4,12]]
+// Home base positions (2 pawns each) in SVG col,row
+const BASE_POS = {
+  red:    [[3,2],[5,2]],
+  green:  [[10,2],[12,2]],
+  yellow: [[10,10],[12,10]],
+  blue:   [[3,10],[5,10]]
 };
 
-const COLORS = {
-  blue: '#1565C0', red: '#c62828',
-  green: '#2e7d32', yellow: '#f9a825'
+// ============================================================
+// PLAYER CONFIG
+// ============================================================
+const PLAYERS = ['red', 'green', 'yellow', 'blue'];
+
+const PCOLOR = {
+  red:    { fill: '#ef4444', stroke: '#7f1d1d', light: '#fca5a5', text: '#fff' },
+  green:  { fill: '#34d399', stroke: '#065f46', light: '#a7f3d0', text: '#fff' },
+  yellow: { fill: '#f59e0b', stroke: '#92400e', light: '#fde68a', text: '#fff' },
+  blue:   { fill: '#60a5fa', stroke: '#1e40af', light: '#bfdbfe', text: '#fff' }
 };
 
-const LIGHT_COLORS = {
-  blue: '#42a5f5', red: '#ef5350',
-  green: '#66bb6a', yellow: '#ffee58'
-};
 
-const PLAYERS = ['blue', 'red', 'green', 'yellow'];
-
-// =====================
-// GAME STATE
-// =====================
-let state = {
-  turn: 0,
-  dice: 0,
-  rolled: false,
-  animating: false,
-  pawns: {
-    blue:   [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-    red:    [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-    green:  [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-    yellow: [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }]
-  }
-};
-
-// =====================
-// GET PIXEL POSITION
-// =====================
-function getPx(player, idx) {
-  const pawn = state.pawns[player][idx];
-  const pos = pawn.pos;
-
-  if (pos === -1) {
-    // Home base
-    const [c, r] = BASES[player][idx];
-    return { x: c * C + C / 2, y: r * C + C / 2 };
-  }
-
-  if (pos >= 0 && pos <= 51) {
-    // Main path
-    const pathIdx = (START[player] + pos) % 52;
-    const [c, r] = PATH[pathIdx];
-    return { x: c * C + C / 2, y: r * C + C / 2 };
-  }
-
-  if (pos >= 52 && pos <= 57) {
-    // Home column
-    const hp = HOME_PATH[player];
-    const hi = pos - 52;
-    if (hi < hp.length) {
-      const [c, r] = hp[hi];
-      return { x: c * C + C / 2, y: r * C + C / 2 };
-    }
-  }
-
-  // Finished - center
-  return { x: SIZE / 2, y: SIZE / 2 };
-}
-
-// =====================
-// DRAW BOARD (FALLBACK)
-// =====================
-function drawBoard() {
-  if (imgLoaded) {
-    ctx.drawImage(boardImg, 0, 0, SIZE, SIZE);
-    return;
-  }
-
-  // Fallback board drawing
-  // Background
-  ctx.fillStyle = '#e8e8e8';
-  ctx.beginPath();
-  ctx.roundRect(0, 0, SIZE, SIZE, 12);
-  ctx.fill();
-
-  // Border
-  ctx.strokeStyle = '#1565C0';
-  ctx.lineWidth = 6;
-  ctx.beginPath();
-  ctx.roundRect(3, 3, SIZE-6, SIZE-6, 10);
-  ctx.stroke();
-
-  // Color quadrants
-  const quads = [
-    { x: 0, y: 0, color: '#1565C0' },         // Blue TL
-    { x: 9*C, y: 0, color: '#c62828' },        // Red TR
-    { x: 0, y: 9*C, color: '#f9a825' },        // Yellow BL
-    { x: 9*C, y: 9*C, color: '#2e7d32' }       // Green BR
-  ];
-
-  quads.forEach(q => {
-    ctx.fillStyle = q.color;
-    ctx.fillRect(q.x, q.y, 6*C, 6*C);
-  });
-
-  // Circles in home bases
-  const circles = [
-    { cx: 3*C, cy: 3*C, color: '#1565C0' },
-    { cx: 12*C, cy: 3*C, color: '#c62828' },
-    { cx: 3*C, cy: 12*C, color: '#f9a825' },
-    { cx: 12*C, cy: 12*C, color: '#2e7d32' }
-  ];
-
-  circles.forEach(c2 => {
-    ctx.beginPath();
-    ctx.arc(c2.cx, c2.cy, 2.2*C, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fill();
-    ctx.strokeStyle = c2.color;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-  });
-
-  // White path cells
-  ctx.fillStyle = '#ffffff';
-  for (let r = 0; r < 15; r++) {
-    for (let c2 = 0; c2 < 15; c2++) {
-      // Skip home bases and center
-      if (r < 6 && c2 < 6) continue;
-      if (r < 6 && c2 > 8) continue;
-      if (r > 8 && c2 < 6) continue;
-      if (r > 8 && c2 > 8) continue;
-      if (r >= 6 && r <= 8 && c2 >= 6 && c2 <= 8) continue;
-
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#ccc';
-      ctx.lineWidth = 0.5;
-      ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
-      ctx.strokeRect(c2*C+1, r*C+1, C-2, C-2);
-    }
-  }
-
-  // Home columns colored
-  const homeColData = [
-    { cells: HOME_PATH.blue.slice(0, 5), color: '#42a5f5' },
-    { cells: HOME_PATH.red.slice(0, 5), color: '#ef5350' },
-    { cells: HOME_PATH.green.slice(0, 5), color: '#66bb6a' },
-    { cells: HOME_PATH.yellow.slice(0, 5), color: '#ffee58' }
-  ];
-
-  homeColData.forEach(hc => {
-    hc.cells.forEach(([c2, r]) => {
-      ctx.fillStyle = hc.color;
-      ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
-    });
-  });
-
-  // Center triangle/diamond
-  ctx.fillStyle = '#9e9e9e';
-  ctx.fillRect(6*C, 6*C, 3*C, 3*C);
-
-  // Center triangles
-  const triangles = [
-    { color: '#1565C0', pts: [[6*C,6*C],[9*C,6*C],[7.5*C,7.5*C]] },
-    { color: '#c62828', pts: [[9*C,6*C],[9*C,9*C],[7.5*C,7.5*C]] },
-    { color: '#2e7d32', pts: [[9*C,9*C],[6*C,9*C],[7.5*C,7.5*C]] },
-    { color: '#f9a825', pts: [[6*C,9*C],[6*C,6*C],[7.5*C,7.5*C]] }
-  ];
-
-  triangles.forEach(t => {
-    ctx.beginPath();
-    ctx.moveTo(t.pts[0][0], t.pts[0][1]);
-    ctx.lineTo(t.pts[1][0], t.pts[1][1]);
-    ctx.lineTo(t.pts[2][0], t.pts[2][1]);
-    ctx.closePath();
-    ctx.fillStyle = t.color;
-    ctx.fill();
-  });
-
-  // Highlight start cells (where pawns enter)
-  const startHighlights = [
-    { idx: 0, player: 'blue', color: '#42a5f5' },
-    { idx: 13, player: 'red', color: '#ef5350' },
-    { idx: 26, player: 'green', color: '#66bb6a' },
-    { idx: 39, player: 'yellow', color: '#ffee58' }
-  ];
-
-  startHighlights.forEach(sh => {
-    const [c2, r] = PATH[sh.idx];
-    ctx.fillStyle = sh.color;
-    ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
-  });
-
-  // Safe cell stars
-  const safeCells = [PATH[8], PATH[13], PATH[21], PATH[26], PATH[34], PATH[39], PATH[47], PATH[0]];
-  safeCells.forEach(([c2, r]) => {
-    ctx.font = `${C*0.7}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('⭐', c2*C+C/2, r*C+C/2);
-  });
-}
-
-// =====================
-// DRAW PAWN
-// =====================
-function drawPawn(x, y, color, lightColor, num, highlight, small) {
-  const r = small ? C * 0.28 : C * 0.38;
-
-  ctx.save();
-
-  // Glow for highlighted
-  if (highlight) {
-    ctx.shadowColor = '#FFD700';
-    ctx.shadowBlur = 12;
-  }
-
-  // Outer white ring
-  ctx.beginPath();
-  ctx.arc(x, y, r + 2, 0, Math.PI * 2);
-  ctx.fillStyle = highlight ? '#FFD700' : '#ffffff';
-  ctx.fill();
-
-  // Main body
-  ctx.beginPath();
-  ctx.arc(x, y, r, 0, Math.PI * 2);
-  const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.1, x, y, r);
-  grad.addColorStop(0, lightColor);
-  grad.addColorStop(1, color);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  // Border
-  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  // Number
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${Math.floor(r * 1.1)}px Arial`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.shadowBlur = 0;
-  ctx.fillText(num, x, y + 1);
-
-  ctx.restore();
-
-  // Pulse ring for movable
-  if (highlight) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(x, y, r + 5 + pulseVal * 4, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 215, 0, ${0.7 - pulseVal * 0.5})`;
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-  }
-}
-
-// =====================
-// DRAW ALL PAWNS
-// =====================
-function drawPawns() {
-  PLAYERS.forEach(player => {
-    state.pawns[player].forEach((pawn, idx) => {
-      const px = getPx(player, idx);
-      const isCurrentPlayer = PLAYERS[state.turn] === player;
-      const movable = isCurrentPlayer && state.rolled && canMove(player, idx);
-
-      // Stack offset if multiple pawns on same cell
-      const offset = getOffset(player, idx);
-
-      drawPawn(
-        px.x + offset.x,
-        px.y + offset.y,
-        COLORS[player],
-        LIGHT_COLORS[player],
-        idx + 1,
-        movable,
-        false
-      );
-    });
-  });
-}
-
-function getOffset(player, idx) {
-  const myPx = getPx(player, idx);
-  let count = 0;
-
-  // Count how many pawns are before this one at same position
-  let found = false;
-  PLAYERS.forEach(p => {
-    state.pawns[p].forEach((pw, i) => {
-      if (found) return;
-      if (p === player && i === idx) { found = true; return; }
-      const op = getPx(p, i);
-      if (Math.abs(op.x - myPx.x) < 3 && Math.abs(op.y - myPx.y) < 3) {
-        count++;
-      }
-    });
-  });
-
-  const offsets = [
-    { x: 0, y: 0 }, { x: C*0.35, y: 0 },
-    { x: 0, y: C*0.35 }, { x: C*0.35, y: C*0.35 }
-  ];
-  return offsets[count % 4];
-}
-
-// =====================
-// DRAW DICE
-// =====================
-const DICE_DOTS = {
-  1: [[0.5, 0.5]],
-  2: [[0.25, 0.25], [0.75, 0.75]],
-  3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]],
-  4: [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]],
-  5: [[0.25, 0.25], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0.75, 0.75]],
-  6: [[0.25, 0.2], [0.75, 0.2], [0.25, 0.5], [0.75, 0.5], [0.25, 0.8], [0.75, 0.8]]
-};
-
-function drawDice(value) {
-  const dc = diceCanvas;
-  const dx = dctx;
-  const w = dc.width, h = dc.height;
-
-  dx.clearRect(0, 0, w, h);
-
-  // Dice body
-  dx.fillStyle = '#ffffff';
-  dx.beginPath();
-  dx.roundRect(4, 4, w-8, h-8, 8);
-  dx.fill();
-
-  dx.strokeStyle = '#333';
-  dx.lineWidth = 2;
-  dx.stroke();
-
-  if (!value) {
-    dx.fillStyle = '#999';
-    dx.font = 'bold 28px Arial';
-    dx.textAlign = 'center';
-    dx.textBaseline = 'middle';
-    dx.fillText('?', w/2, h/2);
-    return;
-  }
-
-  // Dots
-  const dots = DICE_DOTS[value] || [];
-  dots.forEach(([fx, fy]) => {
-    dx.beginPath();
-    dx.arc(fx * (w-8) + 4, fy * (h-8) + 4, 5, 0, Math.PI * 2);
-    dx.fillStyle = value === 6 ? '#e53935' : '#222';
-    dx.fill();
-  });
-}
-
-// =====================
-// PULSE ANIMATION
-// =====================
-let pulseVal = 0;
-let pulseDir = 1;
-let animId;
-
-function animate() {
-  pulseVal += 0.05 * pulseDir;
-  if (pulseVal >= 1) pulseDir = -1;
-  if (pulseVal <= 0) pulseDir = 1;
-  drawAll();
-  animId = requestAnimationFrame(animate);
-}
-
-function drawAll() {
-  drawBoard();
-  drawPawns();
-}
-
-// =====================
-// GAME LOGIC
-// =====================
-function canMove(player, idx) {
-  const pawn = state.pawns[player][idx];
-  const pos = pawn.pos;
-  const dice = state.dice;
-
-  if (pos === -1) return dice === 6;
-  if (pos >= 58) return false;
-
-  const newPos = pos + dice;
-  return newPos <= 57;
-}
-
-function getMovablePawns(player) {
-  return state.pawns[player]
-    .map((_, i) => i)
-    .filter(i => canMove(player, i));
-}
-
-function movePawn(player, idx) {
-  if (!state.rolled || state.animating) return;
-  if (PLAYERS[state.turn] !== player) return;
-  if (!canMove(player, idx)) return;
-
-  const pawn = state.pawns[player][idx];
-  const dice = state.dice;
-
-  if (pawn.pos === -1 && dice === 6) {
-    pawn.pos = 0;
-    showMsg(`${capitalize(player)} pawn ${idx+1} entered the board! 🚀`);
-  } else {
-    pawn.pos += dice;
-    if (pawn.pos >= 57) {
-      pawn.pos = 58;
-      showMsg(`${capitalize(player)} pawn ${idx+1} reached HOME! 🎉🏠`);
-      checkWin(player);
-    } else {
-      checkCapture(player, idx);
-    }
-  }
-
-  state.rolled = false;
-
-  // Extra turn for 6
-  if (dice !== 6) {
-    state.turn = (state.turn + 1) % 4;
-  } else {
-    showMsg(`${capitalize(player)} rolled 6! Roll again! 🎲`);
-  }
-
-  updateUI();
-  drawAll();
-}
-
-function checkCapture(attacker, attackerIdx) {
-  const myPx = getPx(attacker, attackerIdx);
-  const myPos = state.pawns[attacker][attackerIdx].pos;
-
-  // Safe indices (absolute path positions that are safe)
-  const safeAbsolute = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
-  const myAbsPath = (START[attacker] + myPos) % 52;
-
-  if (safeAbsolute.has(myAbsPath)) return; // Safe square
-
-  PLAYERS.forEach(defender => {
-    if (defender === attacker) return;
-    state.pawns[defender].forEach((pawn, i) => {
-      if (pawn.pos < 0 || pawn.pos >= 52) return;
-      const op = getPx(defender, i);
-      const dist = Math.hypot(op.x - myPx.x, op.y - myPx.y);
-      if (dist < C * 0.5) {
-        pawn.pos = -1;
-        showMsg(`${capitalize(attacker)} captured ${capitalize(defender)} pawn ${i+1}! 💥`);
-      }
-    });
-  });
-}
-
-function checkWin(player) {
-  const allHome = state.pawns[player].every(p => p.pos === 58);
-  if (allHome) {
-    setTimeout(() => {
-      alert(`🏆 ${capitalize(player).toUpperCase()} WINS! Congratulations! 🎉`);
-      resetGame();
-    }, 500);
-  }
-}
-
-function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-let diceAnimInterval = null;
-
-function rollDice() {
-  if (state.rolled || state.animating) return;
-
-  state.animating = true;
-  document.getElementById('rollBtn').disabled = true;
-
-  let count = 0;
-  clearInterval(diceAnimInterval);
-
-  diceAnimInterval = setInterval(() => {
-    const tmp = Math.floor(Math.random() * 6) + 1;
-    drawDice(tmp);
-    count++;
-
-    if (count >= 12) {
-      clearInterval(diceAnimInterval);
-      const val = Math.floor(Math.random() * 6) + 1;
-      state.dice = val;
-      state.rolled = true;
-      state.animating = false;
-      drawDice(val);
-
-      document.getElementById('rollBtn').disabled = false;
-
-      const player = PLAYERS[state.turn];
-      const movable = getMovablePawns(player);
-
-      if (movable.length === 0) {
-        showMsg(`${capitalize(player)} rolled ${val} - No valid moves! ⏭️`);
-        setTimeout(() => {
-          if (val !== 6) state.turn = (state.turn + 1) % 4;
-          state.rolled = false;
-          updateUI();
-          drawAll();
-        }, 1200);
-      } else if (movable.length === 1) {
-        showMsg(`${capitalize(player)} rolled ${val}! Auto-moving pawn ${movable[0]+1}...`);
-        setTimeout(() => {
-          movePawn(player, movable[0]);
-        }, 600);
-      } else {
-        showMsg(`${capitalize(player)} rolled ${val}! Click a highlighted pawn to move.`);
-        updateUI();
-        drawAll();
-      }
-    }
-  }, 80);
-}
-
+// ============================================================
+// RESET
+// ============================================================
 function resetGame() {
-  clearInterval(diceAnimInterval);
-  state = {
+  clearInterval(diceInterval);
+  G = {
+    pawns: initPawns(),
     turn: 0,
     dice: 0,
     rolled: false,
     animating: false,
-    pawns: {
-      blue:   [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-      red:    [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-      green:  [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
-      yellow: [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }]
-    }
+    scores: { red: 0, green: 0, yellow: 0, blue: 0 },
+    pulse: 0,
+    pulseDir: 1
   };
-  drawDice(0);
+  renderDiceQ();
+  document.getElementById('hintText').textContent = '';
+  document.getElementById('rollBtn').disabled = false;
+  document.getElementById('diceBox').classList.remove('rolling', 'disabled');
+  document.getElementById('diceBox').classList.add('clickable');
   updateUI();
   drawAll();
 }
 
-function showMsg(msg) {
-  document.getElementById('statusText').textContent = msg;
+// ============================================================
+// ANIMATION LOOP
+// ============================================================
+function animLoop() {
+  G.pulse += 0.06 * G.pulseDir;
+  if (G.pulse >= 1) G.pulseDir = -1;
+  if (G.pulse <= 0) G.pulseDir = 1;
+  drawAll();
+  requestAnimationFrame(animLoop);
 }
 
-function updateUI() {
-  PLAYERS.forEach((p, i) => {
-    const badge = document.getElementById(`b${i}`);
-    if (i === state.turn) {
-      badge.classList.add('active');
-    } else {
-      badge.classList.remove('active');
-    }
-  });
-
-  if (!state.rolled) {
-    const player = capitalize(PLAYERS[state.turn]);
-    showMsg(`${player}'s turn - Roll the Dice! 🎲`);
-  }
-}
-
-// =====================
-// CLICK HANDLER
-// =====================
-canvas.addEventListener('click', (e) => {
-  if (!state.rolled || state.animating) return;
-
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = SIZE / rect.width;
-  const scaleY = SIZE / rect.height;
-  const mx = (e.clientX - rect.left) * scaleX;
-  const my = (e.clientY - rect.top) * scaleY;
-
-  const player = PLAYERS[state.turn];
-
-  state.pawns[player].forEach((pawn, idx) => {
-    if (!canMove(player, idx)) return;
-    const px = getPx(player, idx);
-    const offset = getOffset(player, idx);
-    const dx = mx - (px.x + offset.x);
-    const dy = my - (px.y + offset.y);
-    const dist = Math.hypot(dx, dy);
-
-    if (dist < C * 0.55) {
-      movePawn(player, idx);
-    }
-  });
-});
-
-// =====================
-// START
-// =====================
+// ============================================================
+// INIT
+// ============================================================
 updateUI();
-drawDice(0);
-animate();
+renderDiceQ();
+resizeCanvas();
+animLoop();
 </script>
 </body>
 </html>
