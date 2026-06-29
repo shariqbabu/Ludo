@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Ludo Game</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    background: #020617;
+    font-family: 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    color: #fff;
+  }
+
+  /* ── PRIZE POOL ── */
+  #prize-pool {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-bottom: 1px solid #334155;
+    position: relative;
+    z-index: 10;
+  }
+  .prize-icon { font-size: 20px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1)}50%{transform:scale(1.15)} }
+  .prize-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    color: #94a3b8; text-transform: uppercase;
+  }
+  .prize-amount {
+    font-size: 20px; font-weight: 900;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+    background-size: 200%;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    animation: shimmer 2s infinite linear;
+  }
+  @keyframes shimmer { 0%{background-position:0%} 100%{background-position:200%} }
+  .prize-badge {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #000; font-size: 9px; font-weight: 800;
+    padding: 2px 7px; border-radius: 20px; letter-spacing: 1px;
+  }
+
+  /* ── MAIN GAME AREA ── */
+  #game-wrap {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  /* ── PLAYER BARS ── */
+  .player-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 16px;
+    background: #0f172a;
+    border: 1.5px solid #1e293b;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .player-bar.active-turn {
+    border-color: #3b82f6;
+    box-shadow: 0 0 16px rgba(59,130,246,0.35);
+  }
+  .player-bar.opp-bar.active-turn {
+    border-color: #34d399;
+    box-shadow: 0 0 16px rgba(52,211,153,0.35);
+  }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    position: relative;
+  }
+  .avatar.you-av { background: linear-gradient(135deg,#1d4ed8,#1e3a8a); border-color: #3b82f6; }
+  .avatar.opp-av { background: linear-gradient(135deg,#065f46,#064e3b); border-color: #34d399; }
+  .avatar-ring {
+    position: absolute; inset: -4px; border-radius: 50%;
+    border: 2px solid transparent;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .active-turn .avatar-ring { opacity: 1; animation: spin-ring 2s linear infinite; }
+  .you-av .avatar-ring { border-color: #60a5fa; border-top-color: transparent; }
+  .opp-av .avatar-ring { border-color: #34d399; border-top-color: transparent; }
+  @keyframes spin-ring { to { transform: rotate(360deg); } }
+
+  .player-info { flex: 1; }
+  .player-name {
+    font-size: 13px; font-weight: 700; letter-spacing: 1px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .turn-badge {
+    font-size: 8px; padding: 1px 6px; border-radius: 10px;
+    font-weight: 800; letter-spacing: 1px; opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .active-turn .turn-badge { opacity: 1; }
+  .you-bar .turn-badge { background: #1d4ed8; color: #bfdbfe; }
+  .opp-bar .turn-badge { background: #065f46; color: #a7f3d0; }
+
+  .pawns-preview {
+    display: flex; gap: 5px; margin-top: 4px;
+  }
+  .pawn-dot {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    transition: all 0.3s;
+  }
+  .pawn-dot.active-pawn { transform: scale(1.3); box-shadow: 0 0 6px currentColor; }
+
+  .score-circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid rgba(255,255,255,0.15);
+    background: #020617;
+  }
+  .score-num {
+    font-size: 20px; font-weight: 900; line-height: 1;
+  }
+  .score-lbl { font-size: 7px; font-weight: 700; letter-spacing: 1px; opacity: 0.5; }
+
+  /* ── BOARD CONTAINER ── */
+  #board-container {
+    width: 100%;
+    position: relative;
+  }
+  #board-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 20px;
+    overflow: visible;
+  }
+
+  /* ── DICE AREA ── */
+  #dice-area {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #0f172a;
+    border-radius: 16px;
+    border: 1.5px solid #1e293b;
+  }
+  .dice-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .dice {
+    width: 56px; height: 56px;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 2px solid #334155;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .dice:active { transform: scale(0.93); }
+  .dice.rolling { animation: dice-roll 0.6s ease-in-out; }
+  @keyframes dice-roll {
+    0%{transform:rotate(0) scale(1)}
+    20%{transform:rotate(15deg) scale(1.1)}
+    40%{transform:rotate(-15deg) scale(0.95)}
+    60%{transform:rotate(10deg) scale(1.05)}
+    80%{transform:rotate(-5deg) scale(1)}
+    100%{transform:rotate(0) scale(1)}
+  }
+  .dice-face {
+    display: grid;
+    width: 40px; height: 40px;
+    position: relative;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #fff;
+    position: absolute;
+    box-shadow: 0 0 4px rgba(255,255,255,0.5);
+    transition: all 0.2s;
+  }
+
+  #roll-btn {
+    flex: 1;
+    margin-left: 10px;
+    padding: 14px;
+    border: none; border-radius: 12px; cursor: pointer;
+    font-size: 15px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+    color: #fff;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(29,78,216,0.4);
+    position: relative;
+    overflow: hidden;
+  }
+  #roll-btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    pointer-events: none;
+  }
+  #roll-btn:disabled {
+    opacity: 0.45; cursor: not-allowed;
+    box-shadow: none;
+  }
+  #roll-btn:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(29,78,216,0.5);
+  }
+  #roll-btn:not(:disabled):active { transform: scale(0.97); }
+  #roll-btn.opp-btn {
+    background: linear-gradient(135deg, #065f46, #064e3b);
+    box-shadow: 0 4px 15px rgba(6,95,70,0.4);
+  }
+
+  #status-msg {
+    font-size: 12px; font-weight: 700; letter-spacing: 1px;
+    color: #94a3b8; text-transform: uppercase;
+    text-align: center; padding: 4px 8px;
+    border-radius: 8px;
+    min-height: 22px;
+  }
+
+  /* ── PAWN SVG ELEMENTS ── */
+  .pawn-piece {
+    cursor: pointer;
+    transition: filter 0.2s;
+  }
+  .pawn-piece:hover { filter: brightness(1.3); }
+  .pawn-piece.selectable { animation: pawn-glow 0.8s ease-in-out infinite alternate; }
+  @keyframes pawn-glow {
+    from { filter: drop-shadow(0 0 4px rgba(255,255,255,0.5)); }
+    to   { filter: drop-shadow(0 0 10px rgba(255,255,255,1)); }
+  }
+
+  /* ── MOVE ANIMATION ── */
+  .pawn-moving { transition: cx 0.3s cubic-bezier(0.34,1.56,0.64,1), cy 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border: 2px solid #334155;
+    padding: 16px 28px;
+    border-radius: 20px;
+    font-size: 18px; font-weight: 800;
+    text-align: center;
+    pointer-events: none; opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  }
+  #toast.show {
+    opacity: 1; transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* ── WIN OVERLAY ── */
+  #win-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(2,6,23,0.95);
+    z-index: 1000; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+  }
+  #win-overlay.show { display: flex; }
+  .win-title { font-size: 40px; font-weight: 900; text-align: center; }
+  .win-sub { font-size: 16px; color: #94a3b8; }
+  #restart-btn {
+    padding: 14px 40px; border: none; border-radius: 16px;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+    background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+    color: #fff;
+    box-shadow: 0 8px 25px rgba(29,78,216,0.5);
+    letter-spacing: 1px;
+  }
+
+  /* ── CELL HIGHLIGHT ── */
+  .cell-highlight {
+    animation: cell-flash 0.4s ease-in-out;
+  }
+  @keyframes cell-flash {
+    0%{opacity:0} 50%{opacity:1} 100%{opacity:0}
+  }
+</style>
+</head>
+<body>
+
+<!-- PRIZE POOL -->
+<div id="prize-pool">
+  <span class="prize-icon">🏆</span>
+  <span class="prize-label">Prize Pool</span>
+  <span class="prize-amount">₹500</span>
+  <span class="prize-badge">LIVE</span>
+</div>
+
+<div id="game-wrap">
+
+  <!-- OPPONENT BAR (Top) -->
+  <div class="player-bar opp-bar" id="opp-bar">
+    <div class="avatar opp-av">
+      🤖
+      <div class="avatar-ring"></div>
+    </div>
+    <div class="player-info">
+      <div class="player-name" style="color:#34d399">
+        OPPONENT
+        <span class="turn-badge">YOUR TURN</span>
+      </div>
+      <div class="pawns-preview" id="opp-pawns-preview"></div>
+    </div>
+    <div class="score-circle" id="opp-score-circle">
+      <span class="score-num" id="opp-score" style="color:#34d399">0</span>
+      <span class="score-lbl" style="color:#34d399">SCORE</span>
+    </div>
+  </div>
+
+  <!-- BOARD -->
+  <div id="board-container">
+    <svg id="board-svg" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.7"/>
+        </filter>
+        <linearGradient id="g-red" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#991b1b"/><stop offset="100%" stop-color="#450a0a"/>
+        </linearGradient>
+        <linearGradient id="g-green" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#065f46"/><stop offset="100%" stop-color="#064e3b"/>
+        </linearGradient>
+        <linearGradient id="g-yellow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#b45309"/><stop offset="100%" stop-color="#78350f"/>
+        </linearGradient>
+        <linearGradient id="g-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#1e3a8a"/>
+        </linearGradient>
+        <filter id="cell-shadow" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+        </filter>
+      </defs>
+
+      <!-- Board BG -->
+      <rect width="900" height="900" fill="#020617" rx="40"/>
+      <rect x="10" y="10" width="880" height="880" rx="35" fill="none" stroke="#1e293b" stroke-width="1.5"/>
+
+      <!-- ═══ BASE BOXES ═══ -->
+      <!-- TOP-LEFT Red -->
+      <rect x="30" y="30" width="300" height="300" rx="35" fill="#0f172a" stroke="#7f1d1d" stroke-width="2.5"/>
+      <rect x="48" y="48" width="264" height="264" rx="25" fill="none" stroke="#7f1d1d" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
+
+      <!-- TOP-RIGHT Green (Opponent) -->
+      <rect x="570" y="30" width="300" height="300" rx="35" fill="#0f172a" stroke="#065f46" stroke-width="2.5"/>
+      <rect x="588" y="48" width="264" height="264" rx="25" fill="none" stroke="#065f46" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
+      <circle cx="720" cy="180" r="80" fill="none" stroke="#34d399" stroke-width="1.5" opacity="0.6"/>
+      <text x="720" y="173" font-size="22" font-weight="800" font-family="sans-serif" fill="#34d399" text-anchor="middle" opacity="0.5">OPP</text>
+      <text x="720" y="197" font-size="13" font-weight="600" font-family="sans-serif" fill="#94a3b8" text-anchor="middle" opacity="0.4">HOME</text>
+
+      <!-- BOTTOM-RIGHT Yellow -->
+      <rect x="570" y="570" width="300" height="300" rx="35" fill="#0f172a" stroke="#92400e" stroke-width="2.5"/>
+      <rect x="588" y="588" width="264" height="264" rx="25" fill="none" stroke="#92400e" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
+
+      <!-- BOTTOM-LEFT Blue (YOU) -->
+      <rect x="30" y="570" width="300" height="300" rx="35" fill="#0f172a" stroke="#1e40af" stroke-width="2.5"/>
+      <rect x="48" y="588" width="264" height="264" rx="25" fill="none" stroke="#1e40af" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
+      <circle cx="180" cy="720" r="80" fill="none" stroke="#60a5fa" stroke-width="1.5" opacity="0.6"/>
+      <text x="180" y="713" font-size="22" font-weight="800" font-family="sans-serif" fill="#60a5fa" text-anchor="middle" opacity="0.5">YOU</text>
+      <text x="180" y="737" font-size="13" font-weight="600" font-family="sans-serif" fill="#94a3b8" text-anchor="middle" opacity="0.4">HOME</text>
+
+      <!-- ═══ BOARD CELLS (6x3 + 3x6 cross) ═══ -->
+      <g id="cells-group"></g>
+
+      <!-- ═══ COLORED PATHS ═══ -->
+      <!-- Blue path left horizontal -->
+      <rect x="60" y="420" width="300" height="60" rx="8" fill="url(#g-blue)" opacity="0.85"/>
+      <path d="M120 420 v60 M180 420 v60 M240 420 v60 M300 420 v60" stroke="#000" stroke-opacity="0.25" stroke-width="1.5"/>
+      <!-- Blue entry cell (star) -->
+      <rect x="60" y="360" width="60" height="60" rx="8" fill="url(#g-blue)" opacity="0.9"/>
+      <text x="90" y="398" font-size="22" text-anchor="middle" fill="#fff" opacity="0.8">★</text>
+
+      <!-- Green path top vertical -->
+      <rect x="420" y="60" width="60" height="300" rx="8" fill="url(#g-green)" opacity="0.85"/>
+      <path d="M420 120 h60 M420 180 h60 M420 240 h60 M420 300 h60" stroke="#000" stroke-opacity="0.25" stroke-width="1.5"/>
+      <!-- Green entry (star) -->
+      <rect x="480" y="60" width="60" height="60" rx="8" fill="url(#g-green)" opacity="0.9"/>
+      <text x="510" y="98" font-size="22" text-anchor="middle" fill="#fff" opacity="0.8">★</text>
+
+      <!-- Yellow path right horizontal -->
+      <rect x="540" y="420" width="300" height="60" rx="8" fill="url(#g-yellow)" opacity="0.85"/>
+      <path d="M600 420 v60 M660 420 v60 M720 420 v60 M780 420 v60" stroke="#000" stroke-opacity="0.25" stroke-width="1.5"/>
+      <!-- Yellow entry (star) -->
+      <rect x="780" y="480" width="60" height="60" rx="8" fill="url(#g-yellow)" opacity="0.9"/>
+      <text x="810" y="518" font-size="22" text-anchor="middle" fill="#fff" opacity="0.8">★</text>
+
+      <!-- Red path bottom vertical -->
+      <rect x="420" y="540" width="60" height="300" rx="8" fill="url(#g-red)" opacity="0.85"/>
+      <path d="M420 600 h60 M420 660 h60 M420 720 h60 M420 780 h60" stroke="#000" stroke-opacity="0.25" stroke-width="1.5"/>
+      <!-- Red entry (star) -->
+      <rect x="360" y="780" width="60" height="60" rx="8" fill="url(#g-red)" opacity="0.9"/>
+      <text x="390" y="818" font-size="22" text-anchor="middle" fill="#fff" opacity="0.8">★</text>
+
+      <!-- ═══ CENTER ═══ -->
+      <polygon points="360,360 450,450 360,540" fill="url(#g-blue)" stroke="#020617" stroke-width="3"/>
+      <polygon points="360,360 540,360 450,450" fill="url(#g-green)" stroke="#020617" stroke-width="3"/>
+      <polygon points="540,360 540,540 450,450" fill="url(#g-yellow)" stroke="#020617" stroke-width="3"/>
+      <polygon points="360,540 450,450 540,540" fill="url(#g-red)" stroke="#020617" stroke-width="3"/>
+      <circle cx="450" cy="450" r="28" fill="#020617" stroke="#ffffff" stroke-opacity="0.15" stroke-width="2"/>
+      <text x="450" y="456" font-size="18" text-anchor="middle" fill="#fff" opacity="0.5">🏠</text>
+
+      <!-- ═══ PAWN LAYER ═══ -->
+      <g id="pawns-layer"></g>
+
+      <!-- ═══ CELL HIGHLIGHTS ═══ -->
+      <g id="highlights-layer"></g>
+
+    </svg>
+  </div>
+
+  <!-- DICE AREA -->
+  <div id="dice-area">
+    <div class="dice-wrap">
+      <div class="dice" id="dice-el">
+        <div class="dice-face" id="dice-face"></div>
+      </div>
+      <div>
+        <div id="status-msg">🎲 Roll Dice</div>
+        <div style="font-size:10px;color:#475569;letter-spacing:1px;margin-top:2px">
+          Move: <span id="move-count">0</span> | <span id="turn-indicator">YOUR TURN</span>
+        </div>
+      </div>
+    </div>
+    <button id="roll-btn">ROLL 🎲</button>
+  </div>
+
+  <!-- YOU BAR (Bottom) -->
+  <div class="player-bar you-bar active-turn" id="you-bar">
+    <div class="avatar you-av">
+      👤
+      <div class="avatar-ring"></div>
+    </div>
+    <div class="player-info">
+      <div class="player-name" style="color:#60a5fa">
+        YOU
+        <span class="turn-badge">YOUR TURN</span>
+      </div>
+      <div class="pawns-preview" id="you-pawns-preview"></div>
+    </div>
+    <div class="score-circle" id="you-score-circle">
+      <span class="score-num" id="you-score" style="color:#60a5fa">0</span>
+      <span class="score-lbl" style="color:#60a5fa">SCORE</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- WIN OVERLAY -->
+<div id="win-overlay">
+  <div style="font-size:60px">🏆</div>
+  <div class="win-title" id="win-title">YOU WIN!</div>
+  <div class="win-sub" id="win-sub">Congratulations! Prize: ₹500</div>
+  <button id="restart-btn" onclick="restartGame()">PLAY AGAIN</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  BOARD LAYOUT CONSTANTS
+// ═══════════════════════════════════════════════
+const CELL = 60; // cell size in SVG units
+const COLS = 15; // 15x15 board
+
+// Convert col,row (0-based) to SVG cx,cy center
+function cellCenter(col, row) {
+  return { x: col * CELL + CELL/2, y: row * CELL + CELL/2 };
+}
+
+// ═══════════════════════════════════════════════
+//  LUDO PATHS
+//  Standard Ludo: 52 main cells + home columns
+//  Player (Blue, bottom-left): starts at cell 0
+//  Opponent (Green, top-right): starts at cell 13
+// ═══════════════════════════════════════════════
+
+// Main board path: 52 cells as [col, row] pairs
+// Starting from Blue's entry going clockwise
+const MAIN_PATH = [
+  // Bottom section going right (row 8, col 1-5) = [col, 8]
+  [1,8],[2,8],[3,8],[4,8],[5,8],
+  // Up left column (col 5, row 7-6)
+  [5,7],[5,6],
+  // Top-left section going right (row 6, col 6) -> up (col 6, row 5-1)
+  [6,5],[6,4],[6,3],[6,2],[6,1],
+  // Top middle going right (row 1 col 7, row 0 col 7) NO - row 1
+  [7,1],[7,0],
+  // Actually let me use exact ludo 15x15 grid coords
+  // I'll redefine properly below
+];
+
+// ═══════════════════════════════════════════════
+//  PROPER 15x15 LUDO PATH
+// ═══════════════════════════════════════════════
+// In a 15x15 grid:
+// Home boxes: TL(0-5,0-5), TR(9-14,0-5), BL(0-5,9-14), BR(9-14,9-14)
+// Main path columns: col 6, col 8, row 6, row 8
+// Center: col 7, row 7 (rows/cols 6-8)
+
+// Blue home: BL = cols 0-5, rows 9-14 → in SVG: x=0-300, y=570-870 (with offset 30px border)
+// Green home: TR = cols 9-14, rows 0-5 → in SVG: x=570-870, y=30-330
+
+// MAIN PATH (52 cells, clockwise from Blue start)
+// Blue entry: col=1, row=8 (just outside blue home, going up-left area)
+// 
+// Standard Ludo path clockwise starting from Blue's entry point:
+// 
+// Segment 1: Blue area - left side going down (col=0,rows=8-2 descending from 8→2... 
+// Let me use the exact standard ludo cell positions:
+
+// Grid coords: [col, row] in 0-14 range, each cell = 60px
+// Board starts at x=0, y=0 in SVG (the SVG covers 900x900 for 15x15 grid)
+
+const PATH = [
+  // Blue start → going UP on col 0 side, then along top, etc.
+  // STANDARD LUDO MAIN TRACK (52 squares, 0=Blue entry)
+  
+  // Bottom-left area (Blue's starting zone)
+  [6,13],[6,12],[6,11],[6,10],[6,9],  // 0-4: going up (Blue entry column)
+  [5,8],[4,8],[3,8],[2,8],[1,8],[0,8], // 5-10: going left across row 8
+  
+  // Left side going up
+  [0,7], // 11
+  [0,6],[1,6],[2,6],[3,6],[4,6],[5,6], // 12-17: row 6 going right
+  
+  // Up the left
+  [6,5],[6,4],[6,3],[6,2],[6,1],[6,0], // 18-23: col 6 going up
+  
+  // Top going right
+  [7,0], // 24
+  [8,0],[8,1],[8,2],[8,3],[8,4],[8,5], // 25-30: col 8 going down from top
+  
+  // Top-right area
+  [9,6],[10,6],[11,6],[12,6],[13,6],[14,6], // 31-36: row 6 going right
+  
+  // Right side
+  [14,7], // 37
+  [14,8],[13,8],[12,8],[11,8],[10,8],[9,8], // 38-43: row 8 going left
+  
+  // Bottom-right area  
+  [8,9],[8,10],[8,11],[8,12],[8,13],[8,14], // 44-49: col 8 going down
+  
+  // Bottom going left
+  [7,14], // 50
+  [6,14], // 51 → wraps back to 0
+];
+
+// Home stretches (safe columns to center)
+const BLUE_HOME_STRETCH = [
+  [7,13],[7,12],[7,11],[7,10],[7,9],[7,8] // center of col 7 going up → center
+];
+const GREEN_HOME_STRETCH = [
+  [7,1],[7,2],[7,3],[7,4],[7,5],[7,6] // col 7 going down from top → center
+];
+
+// Starting positions in main path
+const BLUE_START = 0;   // index in PATH where blue enters
+const GREEN_START = 26; // index in PATH where green enters (offset by 13 squares = half board)
+
+// Blue enters home stretch from PATH index 49 area
+const BLUE_HOME_ENTRY = 49; // after this index, enter home stretch  
+const GREEN_HOME_ENTRY = 23; // after PATH[23], green enters home stretch
+
+// ═══════════════════════════════════════════════
+//  HOME POSITIONS (where pawns start in base)
+// ═══════════════════════════════════════════════
+const BLUE_HOME_SPOTS = [
+  {col:1.5, row:10.5}, {col:3.5, row:10.5},
+  {col:1.5, row:12.5}, {col:3.5, row:12.5}
+];
+const GREEN_HOME_SPOTS = [
+  {col:10, row:1.5}, {col:12, row:1.5},
+  {col:10, row:3.5}, {col:12, row:3.5}
+];
+
+// ═══════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════
+let state = {
+  turn: 'you',       // 'you' or 'opp'
+  diceVal: null,
+  diceRolled: false,
+  scores: { you: 0, opp: 0 },
+  moveCount: 0,
+  gameOver: false,
+  
+  pawns: {
+    you: [
+      { id:'y0', pathPos: -1, homeStretch: -1, home: true, finished: false, spotIdx: 0 },
+      { id:'y1', pathPos: -1, homeStretch: -1, home: true, finished: false, spotIdx: 1 },
+    ],
+    opp: [
+      { id:'g0', pathPos: -1, homeStretch: -1, home: true, finished: false, spotIdx: 0 },
+      { id:'g1', pathPos: -1, homeStretch: -1, home: true, finished: false, spotIdx: 1 },
+    ]
+  }
+};
+
+// ═══════════════════════════════════════════════
+//  SVG HELPERS
+// ═══════════════════════════════════════════════
+const svg = document.getElementById('board-svg');
+const NS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs={}) {
+  const el = document.createElementNS(NS, tag);
+  for(const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+  return el;
+}
+
+// Convert grid [col,row] to SVG pixel center
+function gc(col, row) {
+  return { x: col * 60 + 30, y: row * 60 + 30 };
+}
+
+// ═══════════════════════════════════════════════
+//  DRAW BOARD CELLS
+// ═══════════════════════════════════════════════
+function drawCells() {
+  const g = document.getElementById('cells-group');
+  g.innerHTML = '';
+  
+  // Draw the cross-shaped playable cells
+  // Vertical strip: cols 6-8, rows 0-14
+  // Horizontal strip: rows 6-8, cols 0-14
+  // Exclude the 4 home boxes (corners) and center
+  
+  for(let row=0; row<15; row++) {
+    for(let col=0; col<15; col++) {
+      // Skip home box areas
+      if(col<6 && row<6) continue;   // TL
+      if(col>8 && row<6) continue;   // TR
+      if(col<6 && row>8) continue;   // BL
+      if(col>8 && row>8) continue;   // BR
+      // Skip center 3x3 home
+      if(col>=6 && col<=8 && row>=6 && row<=8) continue;
+      // Only draw cross cells
+      if(!(col>=6&&col<=8) && !(row>=6&&row<=8)) continue;
+      
+      const {x,y} = gc(col,row);
+      const px = x-30, py = y-30;
+      
+      // Determine cell color
+      let fill = '#1e293b', stroke = '#334155';
+      let opacity = 1;
+      
+      // Safe star cells
+      const isBlueEntry = col===6&&row===13;
+      const isGreenEntry = col===8&&row===1;
+      
+      // Home stretch coloring
+      if(col===7&&row>=1&&row<=6) { fill='#065f46'; opacity=0.7; } // Green stretch
+      if(col===7&&row>=8&&row<=13) { fill='#1d4ed8'; opacity=0.7; } // Blue stretch
+      if(row===7&&col>=1&&col<=6) { fill='#991b1b'; opacity=0.7; } // Red stretch (left)
+      if(row===7&&col>=8&&col<=13) { fill='#b45309'; opacity=0.7; } // Yellow stretch (right)
+      
+      // Outer edge safe cells (star positions)
+      const safeStars = [
+        [1,6],[2,8],[6,2],[8,1],[13,6],[12,8],[8,12],[6,13]
+      ];
+      const isStar = safeStars.some(([c,r])=>c===col&&r===row);
+      
+      const rect = svgEl('rect', {
+        x: px+2, y: py+2, width: 56, height: 56,
+        rx: 8, fill, stroke, 'stroke-width': 1,
+        opacity, id: `cell-${col}-${row}`
+      });
+      g.appendChild(rect);
+      
+      if(isStar) {
+        const t = svgEl('text', {
+          x, y: y+5, 'font-size': 18,
+          'text-anchor': 'middle', fill: '#fff', opacity: 0.6,
+          'pointer-events': 'none'
+        });
+        t.textContent = '★';
+        g.appendChild(t);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  PAWN POSITIONS
+// ═══════════════════════════════════════════════
+function getPawnPos(pawn, color) {
+  if(pawn.finished) {
+    // At center
+    return { x: 450, y: 450 };
+  }
+  if(pawn.home) {
+    // In home box
+    const spots = color==='you' ? BLUE_HOME_SPOTS : GREEN_HOME_SPOTS;
+    const s = spots[pawn.spotIdx];
+    return { x: s.col*60+30, y: s.row*60+30 };
+  }
+  if(pawn.homeStretch >= 0) {
+    const stretch = color==='you' ? BLUE_HOME_STRETCH : GREEN_HOME_STRETCH;
+    const idx = Math.min(pawn.homeStretch, stretch.length-1);
+    const [col,row] = stretch[idx];
+    return gc(col,row);
+  }
+  // On main path
+  const [col,row] = PATH[pawn.pathPos % PATH.length];
+  return gc(col,row);
+}
+
+// ═══════════════════════════════════════════════
+//  DRAW PAWNS
+// ═══════════════════════════════════════════════
+let pawnEls = {};
+
+function drawAllPawns() {
+  const layer = document.getElementById('pawns-layer');
+  layer.innerHTML = '';
+  pawnEls = {};
+  
+  drawPawnsForPlayer('you', '#1d4ed8', '#60a5fa', '#bfdbfe');
+  drawPawnsForPlayer('opp', '#065f46', '#34d399', '#a7f3d0');
+}
+
+function drawPawnsForPlayer(player, darkColor, midColor, lightColor) {
+  const layer = document.getElementById('pawns-layer');
+  
+  state.pawns[player].forEach(pawn => {
+    const pos = getPawnPos(pawn, player);
+    const g = svgEl('g', {
+      class: 'pawn-piece',
+      id: `pawn-${pawn.id}`,
+      transform: `translate(${pos.x}, ${pos.y})`
+    });
+    
+    // Shadow
+    const shadow = svgEl('ellipse', {
+      cx: 0, cy: 14, rx: 14, ry: 5,
+      fill: '#000', opacity: 0.4
+    });
+    
+    // Pawn body (classic shape)
+    const body = svgEl('ellipse', { cx:0, cy:8, rx:10, ry:7, fill: darkColor, stroke: lightColor, 'stroke-width':1.5 });
+    const neck = svgEl('rect', { x:-4, y:1, width:8, height:8, rx:2, fill: midColor });
+    const head = svgEl('circle', { cx:0, cy:-4, r:8, fill: midColor, stroke: lightColor, 'stroke-width':1.5 });
+    const shine = svgEl('circle', { cx:-2, cy:-6, r:2.5, fill: '#fff', opacity:0.5 });
+    
+    g.appendChild(shadow);
+    g.appendChild(body);
+    g.appendChild(neck);
+    g.appendChild(head);
+    g.appendChild(shine);
+    
+    if(!pawn.finished) {
+      g.style.cursor = 'pointer';
+      g.addEventListener('click', () => onPawnClick(player, pawn.id));
+    }
+    
+    layer.appendChild(g);
+    pawnEls[pawn.id] = g;
+  });
+}
+
+function updatePawnPos(pawnId, pos, animate=true) {
+  const el = pawnEls[pawnId];
+  if(!el) return;
+  if(animate) {
+    el.style.transition = 'transform 0.35s cubic-bezier(0.34,1.56,0.64,1)';
+  }
+  el.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+}
+
+// ═══════════════════════════════════════════════
+//  PAWN PREVIEW DOTS
+// ═══════════════════════════════════════════════
+function updatePawnPreviews() {
+  const youPrev = document.getElementById('you-pawns-preview');
+  const oppPrev = document.getElementById('opp-pawns-preview');
+  
+  youPrev.innerHTML = '';
+  oppPrev.innerHTML = '';
+  
+  state.pawns.you.forEach((p,i) => {
+    const d = document.createElement('div');
+    d.className = 'pawn-dot' + (state.diceRolled && state.turn==='you' && canMove(p,'you') ? ' active-pawn' : '');
+    d.style.background = p.finished ? '#60a5fa' : (p.home ? '#334155' : '#1d4ed8');
+    d.style.borderColor = '#60a5fa';
+    d.style.color = '#60a5fa';
+    youPrev.appendChild(d);
+  });
+  
+  state.pawns.opp.forEach((p,i) => {
+    const d = document.createElement('div');
+    d.className = 'pawn-dot' + (state.diceRolled && state.turn==='opp' && canMove(p,'opp') ? ' active-pawn' : '');
+    d.style.background = p.finished ? '#34d399' : (p.home ? '#334155' : '#065f46');
+    d.style.borderColor = '#34d399';
+    d.style.color = '#34d399';
+    oppPrev.appendChild(d);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  DICE
+// ═══════════════════════════════════════════════
+const DOT_POSITIONS = {
+  1: [[50,50]],
+  2: [[25,25],[75,75]],
+  3: [[25,25],[50,50],[75,75]],
+  4: [[25,25],[75,25],[25,75],[75,75]],
+  5: [[25,25],[75,25],[50,50],[25,75],[75,75]],
+  6: [[25,25],[75,25],[25,50],[75,50],[25,75],[75,75]]
+};
+
+function renderDice(val) {
+  const face = document.getElementById('dice-face');
+  face.innerHTML = '';
+  const positions = DOT_POSITIONS[val] || [];
+  positions.forEach(([px,py]) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot';
+    dot.style.left = (px*0.36)+'px';
+    dot.style.top  = (py*0.36)+'px';
+    face.appendChild(dot);
+  });
+}
+
+function rollDiceAnim() {
+  return new Promise(resolve => {
+    const diceEl = document.getElementById('dice-el');
+    diceEl.classList.add('rolling');
+    let count = 0;
+    const iv = setInterval(() => {
+      const rand = Math.floor(Math.random()*6)+1;
+      renderDice(rand);
+      count++;
+      if(count >= 8) {
+        clearInterval(iv);
+        diceEl.classList.remove('rolling');
+        resolve(rand);
+      }
+    }, 75);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  GAME LOGIC
+// ═══════════════════════════════════════════════
+function canMove(pawn, player) {
+  if(pawn.finished) return false;
+  const dice = state.diceVal;
+  if(!dice) return false;
+  
+  if(pawn.home) {
+    return dice === 6; // need 6 to leave home
+  }
+  if(pawn.homeStretch >= 0) {
+    const stretchLen = 6;
+    return (pawn.homeStretch + dice) <= stretchLen;
+  }
+  // On main path
+  return true;
+}
+
+function hasAnyMove(player) {
+  return state.pawns[player].some(p => canMove(p, player));
+}
+
+function getMovablePawns(player) {
+  return state.pawns[player].filter(p => canMove(p, player));
+}
+
+// ═══════════════════════════════════════════════
+//  HIGHLIGHT SELECTABLE PAWNS
+// ═══════════════════════════════════════════════
+function highlightSelectablePawns(player) {
+  // Remove old highlights
+  Object.keys(pawnEls).forEach(id => {
+    pawnEls[id].classList.remove('selectable');
+  });
+  
+  if(!state.diceRolled) return;
+  
+  getMovablePawns(player).forEach(p => {
+    if(pawnEls[p.id]) {
+      pawnEls[p.id].classList.add('selectable');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  MOVE PAWN
+// ═══════════════════════════════════════════════
+async function movePawn(player, pawnId) {
+  const pawns = state.pawns[player];
+  const pawn = pawns.find(p=>p.id===pawnId);
+  if(!pawn || !canMove(pawn, player)) return;
+  
+  const dice = state.diceVal;
+  
+  // Remove selectable
+  Object.keys(pawnEls).forEach(id => {
+    pawnEls[id].classList.remove('selectable');
+  });
+  
+  if(pawn.home && dice===6) {
+    // Leave home, go to start
+    pawn.home = false;
+    pawn.pathPos = player==='you' ? BLUE_START : GREEN_START;
+    const pos = getPawnPos(pawn, player);
+    await animatePawnTo(pawnId, pos);
+    showToast(player==='you'?'🔵 Pawn enters board!':'🟢 Opp pawn enters!');
+    
+    // Check capture
+    checkCapture(player, pawn);
+    
+  } else if(pawn.homeStretch >= 0) {
+    // Moving in home stretch
+    const newStretch = pawn.homeStretch + dice;
+    if(newStretch >= 6) {
+      // Finished!
+      pawn.homeStretch = 6;
+      pawn.finished = true;
+      state.scores[player]++;
+      updateScoreUI();
+      const finPos = { x:450, y:450 };
+      await animatePawnTo(pawnId, finPos);
+      showToast(player==='you'?'🎉 You scored!':'💥 Opp scored!', 1500);
+      
+      // Check win
+      if(checkWin(player)) return;
+      
+    } else {
+      pawn.homeStretch = newStretch;
+      const pos = getPawnPos(pawn, player);
+      await animatePawnStep(pawnId, pawn, player, dice, true);
+    }
+    
+  } else {
+    // Moving on main path
+    await animatePawnStep(pawnId, pawn, player, dice, false);
+    
+    // Check if entering home stretch
+    checkHomeEntry(pawn, player);
+    
+    // Check capture
+    if(!pawn.home && !pawn.finished && pawn.homeStretch<0) {
+      checkCapture(player, pawn);
+    }
+  }
+  
+  state.moveCount++;
+  document.getElementById('move-count').textContent = state.moveCount;
+  
+  // If dice was 6, same turn; else switch
+  if(dice === 6 && !state.gameOver) {
+    state.diceRolled = false;
+    state.diceVal = null;
+    showStatus(player==='you'?'🎲 Roll again! (Got 6)':'⏳ Opp rolls again...');
+    updateTurnUI();
+    updatePawnPreviews();
+    
+    if(player === 'opp') {
+      setTimeout(doOppTurn, 1200);
+    }
+    return;
+  }
+  
+  // Switch turn
+  if(!state.gameOver) {
+    switchTurn();
+  }
+}
+
+async function animatePawnStep(pawnId, pawn, player, steps, isStretch) {
+  const stretch = player==='you' ? BLUE_HOME_STRETCH : GREEN_HOME_STRETCH;
+  
+  for(let i=0; i<steps; i++) {
+    if(isStretch) {
+      pawn.homeStretch = Math.min(pawn.homeStretch+1, stretch.length-1);
+    } else {
+      const nextPos = (pawn.pathPos + 1) % PATH.length;
+      pawn.pathPos = nextPos;
+    }
+    const pos = getPawnPos(pawn, player);
+    await animatePawnTo(pawnId, pos, 200);
+    await sleep(50);
+  }
+}
+
+function animatePawnTo(pawnId, pos, duration=350) {
+  return new Promise(resolve => {
+    const el = pawnEls[pawnId];
+    if(!el) { resolve(); return; }
+    el.style.transition = `transform ${duration}ms cubic-bezier(0.34,1.56,0.64,1)`;
+    el.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+    setTimeout(resolve, duration+30);
+  });
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ═══════════════════════════════════════════════
+//  CHECK HOME ENTRY
+// ═══════════════════════════════════════════════
+function checkHomeEntry(pawn, player) {
+  const entryIdx = player==='you' ? BLUE_HOME_ENTRY : GREEN_HOME_ENTRY;
+  // Blue: after pathPos 49, enters home stretch at col 7
+  // Green: after pathPos 23, enters home stretch
+  // Simple check: if pawn is at exact entry point in PATH
+  
+  const homeEntryMap = {
+    you: [6,14],   // [col,row] of path just before home stretch
+    opp: [8,0]     // top entry for green
+  };
+  
+  const [hcol, hrow] = PATH[pawn.pathPos];
+  
+  if(player==='you' && hcol===7 && hrow===14) {
+    pawn.homeStretch = 0;
+    pawn.pathPos = -1;
+  }
+  if(player==='opp' && hcol===7 && hrow===0) {
+    pawn.homeStretch = 0;
+    pawn.pathPos = -1;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  CAPTURE CHECK
+// ═══════════════════════════════════════════════
+function checkCapture(attacker, atkPawn) {
+  const defender = attacker==='you'?'opp':'you';
+  const [acol,arow] = PATH[atkPawn.pathPos % PATH.length];
+  
+  // Safe cells (stars)
+  const safeCells = [
+    [1,6],[2,8],[6,2],[8,1],[13,6],[12,8],[8,12],[6,13],
+    // Start cells
+    [6,13],[8,1]
+  ];
+  const isSafe = safeCells.some(([c,r])=>c===acol&&r===arow);
+  if(isSafe) return;
+  
+  state.pawns[defender].forEach(defPawn => {
+    if(defPawn.home || defPawn.finished || defPawn.homeStretch>=0) return;
+    const [dcol,drow] = PATH[defPawn.pathPos % PATH.length];
+    if(dcol===acol && drow===arow) {
+      // Capture!
+      defPawn.home = true;
+      defPawn.pathPos = -1;
+      defPawn.homeStretch = -1;
+      const homePos = getPawnPos(defPawn, defender);
+      updatePawnPos(defPawn.id, homePos, true);
+      showToast(attacker==='you'?'💥 Captured!':'😱 Opp captured you!', 1200);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  WIN CHECK
+// ═══════════════════════════════════════════════
+function checkWin(player) {
+  const all = state.pawns[player].every(p=>p.finished);
+  if(all || state.scores[player]>=2) {
+    state.gameOver = true;
+    setTimeout(()=>showWin(player), 800);
+    return true;
+  }
+  return false;
+}
+
+function showWin(player) {
+  const ov = document.getElementById('win-overlay');
+  const title = document.getElementById('win-title');
+  const sub = document.getElementById('win-sub');
+  
+  if(player==='you') {
+    title.textContent = '🎉 YOU WIN!';
+    title.style.color = '#60a5fa';
+    sub.textContent = 'Congratulations! You won ₹500!';
+  } else {
+    title.textContent = '😔 OPPONENT WINS';
+    title.style.color = '#34d399';
+    sub.textContent = 'Better luck next time!';
+  }
+  ov.classList.add('show');
+}
+
+// ═══════════════════════════════════════════════
+//  SWITCH TURN
+// ═══════════════════════════════════════════════
+function switchTurn() {
+  state.turn = state.turn==='you'?'opp':'you';
+  state.diceRolled = false;
+  state.diceVal = null;
+  
+  updateTurnUI();
+  highlightSelectablePawns(state.turn);
+  updatePawnPreviews();
+  
+  document.getElementById('turn-indicator').textContent = 
+    state.turn==='you' ? 'YOUR TURN' : 'OPP TURN';
+  
+  if(state.turn==='opp') {
+    showStatus('🤖 Opponent thinking...');
+    setTimeout(doOppTurn, 1000);
+  } else {
+    showStatus('🎲 Your turn! Roll dice');
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  UPDATE UI
+// ═══════════════════════════════════════════════
+function updateTurnUI() {
+  const youBar = document.getElementById('you-bar');
+  const oppBar = document.getElementById('opp-bar');
+  const rollBtn = document.getElementById('roll-btn');
+  
+  if(state.turn==='you') {
+    youBar.classList.add('active-turn');
+    oppBar.classList.remove('active-turn');
+    rollBtn.disabled = state.diceRolled;
+    rollBtn.className = '';
+    rollBtn.textContent = 'ROLL 🎲';
+  } else {
+    oppBar.classList.add('active-turn');
+    youBar.classList.remove('active-turn');
+    rollBtn.disabled = true;
+    rollBtn.className = 'opp-btn';
+    rollBtn.textContent = 'OPP TURN';
+  }
+}
+
+function updateScoreUI() {
+  document.getElementById('you-score').textContent = state.scores.you;
+  document.getElementById('opp-score').textContent = state.scores.opp;
+}
+
+function showStatus(msg) {
+  document.getElementById('status-msg').textContent = msg;
+}
+
+// ═══════════════════════════════════════════════
+//  OPPONENT AI
+// ═══════════════════════════════════════════════
+async function doOppTurn() {
+  if(state.turn !== 'opp' || state.gameOver) return;
+  
+  showStatus('🤖 Opponent rolling...');
+  await sleep(600);
+  
+  const val = await rollDiceAnim();
+  state.diceVal = val;
+  state.diceRolled = true;
+  
+  showStatus(`🤖 Opponent rolled ${val}`);
+  updatePawnPreviews();
+  
+  await sleep(700);
+  
+  const movable = getMovablePawns('opp');
+  if(movable.length === 0) {
+    showStatus('🤖 No move available');
+    await sleep(800);
+    switchTurn();
+    return;
+  }
+  
+  // AI: prefer moving pawn that's furthest, or leave home if 6
+  let chosen = movable[0];
+  if(val===6) {
+    const homeP = movable.find(p=>p.home);
+    if(homeP) chosen = homeP;
+  } else {
+    // Pick the one furthest along
+    movable.forEach(p => {
+      if(p.pathPos > chosen.pathPos) chosen = p;
+    });
+  }
+  
+  await movePawn('opp', chosen.id);
+  
+  // Redraw after move
+  redrawPawns();
+}
+
+// ═══════════════════════════════════════════════
+//  PAWN CLICK HANDLER
+// ═══════════════════════════════════════════════
+async function onPawnClick(player, pawnId) {
+  if(state.gameOver) return;
+  if(player !== state.turn) { showToast("Not your turn!", 800); return; }
+  if(!state.diceRolled) { showToast("Roll dice first!", 800); return; }
+  
+  const pawn = state.pawns[player].find(p=>p.id===pawnId);
+  if(!canMove(pawn, player)) { showToast("Can't move this pawn!", 800); return; }
+  
+  await movePawn(player, pawnId);
+  redrawPawns();
+}
+
+// ═══════════════════════════════════════════════
+//  ROLL BUTTON
+// ═══════════════════════════════════════════════
+document.getElementById('roll-btn').addEventListener('click', async () => {
+  if(state.turn!=='you' || state.diceRolled || state.gameOver) return;
+  
+  document.getElementById('roll-btn').disabled = true;
+  
+  const val = await rollDiceAnim();
+  state.diceVal = val;
+  state.diceRolled = true;
+  
+  showStatus(`🎲 You rolled ${val}!`);
+  
+  const movable = getMovablePawns('you');
+  if(movable.length === 0) {
+    showStatus('😔 No moves! Turn skipped');
+    updatePawnPreviews();
+    await sleep(1200);
+    switchTurn();
+    return;
+  }
+  
+  if(movable.length === 1) {
+    // Auto move if only one option
+    updatePawnPreviews();
+    await sleep(400);
+    await movePawn('you', movable[0].id);
+    redrawPawns();
+    return;
+  }
+  
+  showStatus('👆 Tap a pawn to move');
+  highlightSelectablePawns('you');
+  updatePawnPreviews();
+});
+
+// ═══════════════════════════════════════════════
+//  REDRAW PAWNS (after movement)
+// ═══════════════════════════════════════════════
+function redrawPawns() {
+  // Instead of full redraw, just update positions
+  ['you','opp'].forEach(player => {
+    state.pawns[player].forEach(pawn => {
+      const pos = getPawnPos(pawn, player);
+      const el = pawnEls[pawn.id];
+      if(el) {
+        el.style.transition = '';
+        el.setAttribute('transform', `translate(${pos.x},${pos.y})`);
+      }
+    });
+  });
+  updatePawnPreviews();
+}
+
+// ═══════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════
+let toastTimer;
+function showToast(msg, duration=1000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), duration);
+}
+
+// ═══════════════════════════════════════════════
+//  RESTART
+// ═══════════════════════════════════════════════
+function restartGame() {
+  state = {
+    turn: 'you',
+    diceVal: null,
+    diceRolled: false,
+    scores: { you: 0, opp: 0 },
+    moveCount: 0,
+    gameOver: false,
+    pawns: {
+      you: [
+        { id:'y0', pathPos:-1, homeStretch:-1, home:true, finished:false, spotIdx:0 },
+        { id:'y1', pathPos:-1, homeStretch:-1, home:true, finished:false, spotIdx:1 },
+      ],
+      opp: [
+        { id:'g0', pathPos:-1, homeStretch:-1, home:true, finished:false, spotIdx:0 },
+        { id:'g1', pathPos:-1, homeStretch:-1, home:true, finished:false, spotIdx:1 },
+      ]
+    }
+  };
+  document.getElementById('win-overlay').classList.remove('show');
+  document.getElementById('move-count').textContent = '0';
+  updateScoreUI();
+  drawAllPawns();
+  updateTurnUI();
+  updatePawnPreviews();
+  renderDice(1);
+  showStatus('🎲 Roll Dice');
+  document.getElementById('turn-indicator').textContent = 'YOUR TURN';
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+function init() {
+  drawCells();
+  drawAllPawns();
+  renderDice(1);
+  updateTurnUI();
+  updatePawnPreviews();
+  showStatus('🎲 Roll Dice to start!');
+}
+
+init();
+</script>
+</body>
+</html>
