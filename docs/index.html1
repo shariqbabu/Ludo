@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ludo Game</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #1a1a2e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  padding: 10px;
+}
+
+h1 {
+  color: #fff;
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.game-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+#mainCanvas {
+  border-radius: 12px;
+  display: block;
+  cursor: pointer;
+}
+
+.controls {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.btn:active { transform: scale(0.95); }
+.btn-roll { background: #f39c12; color: #fff; }
+.btn-reset { background: #e74c3c; color: #fff; }
+
+.info {
+  margin-top: 10px;
+  color: #fff;
+  font-size: 15px;
+  text-align: center;
+  background: rgba(0,0,0,0.5);
+  padding: 8px 16px;
+  border-radius: 8px;
+  min-width: 280px;
+}
+
+.badges {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  justify-content: center;
+}
+
+.badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  opacity: 0.4;
+  transition: all 0.3s;
+}
+.badge.active {
+  opacity: 1;
+  transform: scale(1.15);
+  box-shadow: 0 0 8px rgba(255,255,255,0.6);
+}
+
+#statusText { min-height: 20px; }
+</style>
+</head>
+<body>
+
+<h1>🎲 Ludo Game</h1>
+
+<div class="game-wrapper">
+  <canvas id="mainCanvas" width="540" height="540"></canvas>
+</div>
+
+<div class="info">
+  <div id="statusText">Click Roll Dice to Start!</div>
+  <div class="badges">
+    <div class="badge active" id="b0" style="background:#1565C0">🔵 Blue</div>
+    <div class="badge" id="b1" style="background:#c62828">🔴 Red</div>
+    <div class="badge" id="b2" style="background:#2e7d32">🟢 Green</div>
+    <div class="badge" id="b3" style="background:#f9a825;color:#333">🟡 Yellow</div>
+  </div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-roll" id="rollBtn" onclick="rollDice()">🎲 Roll Dice</button>
+  <button class="btn btn-reset" onclick="resetGame()">🔄 Reset</button>
+</div>
+
+<canvas id="diceCanvas" width="70" height="70" style="margin-top:8px; display:block; margin-left:auto; margin-right:auto;"></canvas>
+
+<script>
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const diceCanvas = document.getElementById('diceCanvas');
+const dctx = diceCanvas.getContext('2d');
+
+const SIZE = 540;
+const CELLS = 15;
+const C = SIZE / CELLS; // 36px per cell
+
+// =====================
+// BOARD DRAWING
+// =====================
+const boardImg = new Image();
+boardImg.src = 'ludo-board.png';
+
+let imgLoaded = false;
+boardImg.onload = () => { imgLoaded = true; drawAll(); };
+boardImg.onerror = () => { imgLoaded = false; drawAll(); };
+
+// =====================
+// PATH DEFINITION
+// =====================
+// 52 main cells + home entries
+// [col, row] 0-indexed, 15x15 grid
+
+function buildMainPath() {
+  let p = [];
+  // Left col going UP: col=1, row 12 to 7
+  for (let r = 12; r >= 7; r--) p.push([1, r]);      // 0-5
+  // Middle row LEFT going RIGHT: row=6, col 1-5
+  for (let c = 1; c <= 5; c++) p.push([c, 6]);        // 6-10
+  // Top-left channel UP: col=6, row 5-0
+  for (let r = 5; r >= 0; r--) p.push([6, r]);        // 11-16
+  // Top row RIGHT: row=0, col 7,8
+  p.push([7, 0]); p.push([8, 0]);                     // 17-18
+  // Top-right channel DOWN: col=8, row 1-5
+  for (let r = 1; r <= 5; r++) p.push([8, r]);        // 19-23
+  // Middle row RIGHT: row=6, col 9-13
+  for (let c = 9; c <= 13; c++) p.push([c, 6]);       // 24-28
+  // Right col going DOWN: col=13, row 7-12
+  for (let r = 7; r <= 12; r++) p.push([13, r]);      // 29-34
+  // Middle row RIGHT going LEFT: row=8, col 13-9
+  for (let c = 13; c >= 9; c--) p.push([c, 8]);       // 35-39
+  // Bottom-right channel DOWN: col=8, row 9-13
+  for (let r = 9; r <= 13; r++) p.push([8, r]);       // 40-44
+  // Bottom row LEFT: row=13, col 7,6
+  p.push([7, 13]); p.push([6, 13]);                   // 45-46
+  // Bottom-left channel UP: col=6, row 12-8
+  for (let r = 12; r >= 8; r--) p.push([6, r]);       // 47-51
+  // Total: 6+5+6+2+5+5+6+5+5+2+5 = 52 ✓
+  return p;
+}
+
+const PATH = buildMainPath();
+console.log('Path cells:', PATH.length); // Should be 52
+
+// Home column paths (6 cells leading to center)
+const HOME_PATH = {
+  blue:   [[2,7],[3,7],[4,7],[5,7],[6,7],[7,7]],
+  red:    [[7,2],[7,3],[7,4],[7,5],[7,6],[7,7]],
+  green:  [[12,7],[11,7],[10,7],[9,7],[8,7],[7,7]],
+  yellow: [[7,12],[7,11],[7,10],[7,9],[7,8],[7,7]]
+};
+
+// Player start index on PATH (where pawn enters after rolling 6)
+const START = { blue: 0, red: 13, green: 26, yellow: 39 };
+
+// Home base positions for 4 pawns
+const BASES = {
+  blue:   [[2,2],[4,2],[2,4],[4,4]],
+  red:    [[10,2],[12,2],[10,4],[12,4]],
+  green:  [[10,10],[12,10],[10,12],[12,12]],
+  yellow: [[2,10],[4,10],[2,12],[4,12]]
+};
+
+const COLORS = {
+  blue: '#1565C0', red: '#c62828',
+  green: '#2e7d32', yellow: '#f9a825'
+};
+
+const LIGHT_COLORS = {
+  blue: '#42a5f5', red: '#ef5350',
+  green: '#66bb6a', yellow: '#ffee58'
+};
+
+const PLAYERS = ['blue', 'red', 'green', 'yellow'];
+
+// =====================
+// GAME STATE
+// =====================
+let state = {
+  turn: 0,
+  dice: 0,
+  rolled: false,
+  animating: false,
+  pawns: {
+    blue:   [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+    red:    [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+    green:  [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+    yellow: [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }]
+  }
+};
+
+// =====================
+// GET PIXEL POSITION
+// =====================
+function getPx(player, idx) {
+  const pawn = state.pawns[player][idx];
+  const pos = pawn.pos;
+
+  if (pos === -1) {
+    // Home base
+    const [c, r] = BASES[player][idx];
+    return { x: c * C + C / 2, y: r * C + C / 2 };
+  }
+
+  if (pos >= 0 && pos <= 51) {
+    // Main path
+    const pathIdx = (START[player] + pos) % 52;
+    const [c, r] = PATH[pathIdx];
+    return { x: c * C + C / 2, y: r * C + C / 2 };
+  }
+
+  if (pos >= 52 && pos <= 57) {
+    // Home column
+    const hp = HOME_PATH[player];
+    const hi = pos - 52;
+    if (hi < hp.length) {
+      const [c, r] = hp[hi];
+      return { x: c * C + C / 2, y: r * C + C / 2 };
+    }
+  }
+
+  // Finished - center
+  return { x: SIZE / 2, y: SIZE / 2 };
+}
+
+// =====================
+// DRAW BOARD (FALLBACK)
+// =====================
+function drawBoard() {
+  if (imgLoaded) {
+    ctx.drawImage(boardImg, 0, 0, SIZE, SIZE);
+    return;
+  }
+
+  // Fallback board drawing
+  // Background
+  ctx.fillStyle = '#e8e8e8';
+  ctx.beginPath();
+  ctx.roundRect(0, 0, SIZE, SIZE, 12);
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = '#1565C0';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.roundRect(3, 3, SIZE-6, SIZE-6, 10);
+  ctx.stroke();
+
+  // Color quadrants
+  const quads = [
+    { x: 0, y: 0, color: '#1565C0' },         // Blue TL
+    { x: 9*C, y: 0, color: '#c62828' },        // Red TR
+    { x: 0, y: 9*C, color: '#f9a825' },        // Yellow BL
+    { x: 9*C, y: 9*C, color: '#2e7d32' }       // Green BR
+  ];
+
+  quads.forEach(q => {
+    ctx.fillStyle = q.color;
+    ctx.fillRect(q.x, q.y, 6*C, 6*C);
+  });
+
+  // Circles in home bases
+  const circles = [
+    { cx: 3*C, cy: 3*C, color: '#1565C0' },
+    { cx: 12*C, cy: 3*C, color: '#c62828' },
+    { cx: 3*C, cy: 12*C, color: '#f9a825' },
+    { cx: 12*C, cy: 12*C, color: '#2e7d32' }
+  ];
+
+  circles.forEach(c2 => {
+    ctx.beginPath();
+    ctx.arc(c2.cx, c2.cy, 2.2*C, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fill();
+    ctx.strokeStyle = c2.color;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+  });
+
+  // White path cells
+  ctx.fillStyle = '#ffffff';
+  for (let r = 0; r < 15; r++) {
+    for (let c2 = 0; c2 < 15; c2++) {
+      // Skip home bases and center
+      if (r < 6 && c2 < 6) continue;
+      if (r < 6 && c2 > 8) continue;
+      if (r > 8 && c2 < 6) continue;
+      if (r > 8 && c2 > 8) continue;
+      if (r >= 6 && r <= 8 && c2 >= 6 && c2 <= 8) continue;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 0.5;
+      ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
+      ctx.strokeRect(c2*C+1, r*C+1, C-2, C-2);
+    }
+  }
+
+  // Home columns colored
+  const homeColData = [
+    { cells: HOME_PATH.blue.slice(0, 5), color: '#42a5f5' },
+    { cells: HOME_PATH.red.slice(0, 5), color: '#ef5350' },
+    { cells: HOME_PATH.green.slice(0, 5), color: '#66bb6a' },
+    { cells: HOME_PATH.yellow.slice(0, 5), color: '#ffee58' }
+  ];
+
+  homeColData.forEach(hc => {
+    hc.cells.forEach(([c2, r]) => {
+      ctx.fillStyle = hc.color;
+      ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
+    });
+  });
+
+  // Center triangle/diamond
+  ctx.fillStyle = '#9e9e9e';
+  ctx.fillRect(6*C, 6*C, 3*C, 3*C);
+
+  // Center triangles
+  const triangles = [
+    { color: '#1565C0', pts: [[6*C,6*C],[9*C,6*C],[7.5*C,7.5*C]] },
+    { color: '#c62828', pts: [[9*C,6*C],[9*C,9*C],[7.5*C,7.5*C]] },
+    { color: '#2e7d32', pts: [[9*C,9*C],[6*C,9*C],[7.5*C,7.5*C]] },
+    { color: '#f9a825', pts: [[6*C,9*C],[6*C,6*C],[7.5*C,7.5*C]] }
+  ];
+
+  triangles.forEach(t => {
+    ctx.beginPath();
+    ctx.moveTo(t.pts[0][0], t.pts[0][1]);
+    ctx.lineTo(t.pts[1][0], t.pts[1][1]);
+    ctx.lineTo(t.pts[2][0], t.pts[2][1]);
+    ctx.closePath();
+    ctx.fillStyle = t.color;
+    ctx.fill();
+  });
+
+  // Highlight start cells (where pawns enter)
+  const startHighlights = [
+    { idx: 0, player: 'blue', color: '#42a5f5' },
+    { idx: 13, player: 'red', color: '#ef5350' },
+    { idx: 26, player: 'green', color: '#66bb6a' },
+    { idx: 39, player: 'yellow', color: '#ffee58' }
+  ];
+
+  startHighlights.forEach(sh => {
+    const [c2, r] = PATH[sh.idx];
+    ctx.fillStyle = sh.color;
+    ctx.fillRect(c2*C+1, r*C+1, C-2, C-2);
+  });
+
+  // Safe cell stars
+  const safeCells = [PATH[8], PATH[13], PATH[21], PATH[26], PATH[34], PATH[39], PATH[47], PATH[0]];
+  safeCells.forEach(([c2, r]) => {
+    ctx.font = `${C*0.7}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⭐', c2*C+C/2, r*C+C/2);
+  });
+}
+
+// =====================
+// DRAW PAWN
+// =====================
+function drawPawn(x, y, color, lightColor, num, highlight, small) {
+  const r = small ? C * 0.28 : C * 0.38;
+
+  ctx.save();
+
+  // Glow for highlighted
+  if (highlight) {
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur = 12;
+  }
+
+  // Outer white ring
+  ctx.beginPath();
+  ctx.arc(x, y, r + 2, 0, Math.PI * 2);
+  ctx.fillStyle = highlight ? '#FFD700' : '#ffffff';
+  ctx.fill();
+
+  // Main body
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  const grad = ctx.createRadialGradient(x - r*0.3, y - r*0.3, r*0.1, x, y, r);
+  grad.addColorStop(0, lightColor);
+  grad.addColorStop(1, color);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Border
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Number
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.floor(r * 1.1)}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowBlur = 0;
+  ctx.fillText(num, x, y + 1);
+
+  ctx.restore();
+
+  // Pulse ring for movable
+  if (highlight) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r + 5 + pulseVal * 4, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 215, 0, ${0.7 - pulseVal * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// =====================
+// DRAW ALL PAWNS
+// =====================
+function drawPawns() {
+  PLAYERS.forEach(player => {
+    state.pawns[player].forEach((pawn, idx) => {
+      const px = getPx(player, idx);
+      const isCurrentPlayer = PLAYERS[state.turn] === player;
+      const movable = isCurrentPlayer && state.rolled && canMove(player, idx);
+
+      // Stack offset if multiple pawns on same cell
+      const offset = getOffset(player, idx);
+
+      drawPawn(
+        px.x + offset.x,
+        px.y + offset.y,
+        COLORS[player],
+        LIGHT_COLORS[player],
+        idx + 1,
+        movable,
+        false
+      );
+    });
+  });
+}
+
+function getOffset(player, idx) {
+  const myPx = getPx(player, idx);
+  let count = 0;
+
+  // Count how many pawns are before this one at same position
+  let found = false;
+  PLAYERS.forEach(p => {
+    state.pawns[p].forEach((pw, i) => {
+      if (found) return;
+      if (p === player && i === idx) { found = true; return; }
+      const op = getPx(p, i);
+      if (Math.abs(op.x - myPx.x) < 3 && Math.abs(op.y - myPx.y) < 3) {
+        count++;
+      }
+    });
+  });
+
+  const offsets = [
+    { x: 0, y: 0 }, { x: C*0.35, y: 0 },
+    { x: 0, y: C*0.35 }, { x: C*0.35, y: C*0.35 }
+  ];
+  return offsets[count % 4];
+}
+
+// =====================
+// DRAW DICE
+// =====================
+const DICE_DOTS = {
+  1: [[0.5, 0.5]],
+  2: [[0.25, 0.25], [0.75, 0.75]],
+  3: [[0.25, 0.25], [0.5, 0.5], [0.75, 0.75]],
+  4: [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]],
+  5: [[0.25, 0.25], [0.75, 0.25], [0.5, 0.5], [0.25, 0.75], [0.75, 0.75]],
+  6: [[0.25, 0.2], [0.75, 0.2], [0.25, 0.5], [0.75, 0.5], [0.25, 0.8], [0.75, 0.8]]
+};
+
+function drawDice(value) {
+  const dc = diceCanvas;
+  const dx = dctx;
+  const w = dc.width, h = dc.height;
+
+  dx.clearRect(0, 0, w, h);
+
+  // Dice body
+  dx.fillStyle = '#ffffff';
+  dx.beginPath();
+  dx.roundRect(4, 4, w-8, h-8, 8);
+  dx.fill();
+
+  dx.strokeStyle = '#333';
+  dx.lineWidth = 2;
+  dx.stroke();
+
+  if (!value) {
+    dx.fillStyle = '#999';
+    dx.font = 'bold 28px Arial';
+    dx.textAlign = 'center';
+    dx.textBaseline = 'middle';
+    dx.fillText('?', w/2, h/2);
+    return;
+  }
+
+  // Dots
+  const dots = DICE_DOTS[value] || [];
+  dots.forEach(([fx, fy]) => {
+    dx.beginPath();
+    dx.arc(fx * (w-8) + 4, fy * (h-8) + 4, 5, 0, Math.PI * 2);
+    dx.fillStyle = value === 6 ? '#e53935' : '#222';
+    dx.fill();
+  });
+}
+
+// =====================
+// PULSE ANIMATION
+// =====================
+let pulseVal = 0;
+let pulseDir = 1;
+let animId;
+
+function animate() {
+  pulseVal += 0.05 * pulseDir;
+  if (pulseVal >= 1) pulseDir = -1;
+  if (pulseVal <= 0) pulseDir = 1;
+  drawAll();
+  animId = requestAnimationFrame(animate);
+}
+
+function drawAll() {
+  drawBoard();
+  drawPawns();
+}
+
+// =====================
+// GAME LOGIC
+// =====================
+function canMove(player, idx) {
+  const pawn = state.pawns[player][idx];
+  const pos = pawn.pos;
+  const dice = state.dice;
+
+  if (pos === -1) return dice === 6;
+  if (pos >= 58) return false;
+
+  const newPos = pos + dice;
+  return newPos <= 57;
+}
+
+function getMovablePawns(player) {
+  return state.pawns[player]
+    .map((_, i) => i)
+    .filter(i => canMove(player, i));
+}
+
+function movePawn(player, idx) {
+  if (!state.rolled || state.animating) return;
+  if (PLAYERS[state.turn] !== player) return;
+  if (!canMove(player, idx)) return;
+
+  const pawn = state.pawns[player][idx];
+  const dice = state.dice;
+
+  if (pawn.pos === -1 && dice === 6) {
+    pawn.pos = 0;
+    showMsg(`${capitalize(player)} pawn ${idx+1} entered the board! 🚀`);
+  } else {
+    pawn.pos += dice;
+    if (pawn.pos >= 57) {
+      pawn.pos = 58;
+      showMsg(`${capitalize(player)} pawn ${idx+1} reached HOME! 🎉🏠`);
+      checkWin(player);
+    } else {
+      checkCapture(player, idx);
+    }
+  }
+
+  state.rolled = false;
+
+  // Extra turn for 6
+  if (dice !== 6) {
+    state.turn = (state.turn + 1) % 4;
+  } else {
+    showMsg(`${capitalize(player)} rolled 6! Roll again! 🎲`);
+  }
+
+  updateUI();
+  drawAll();
+}
+
+function checkCapture(attacker, attackerIdx) {
+  const myPx = getPx(attacker, attackerIdx);
+  const myPos = state.pawns[attacker][attackerIdx].pos;
+
+  // Safe indices (absolute path positions that are safe)
+  const safeAbsolute = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+  const myAbsPath = (START[attacker] + myPos) % 52;
+
+  if (safeAbsolute.has(myAbsPath)) return; // Safe square
+
+  PLAYERS.forEach(defender => {
+    if (defender === attacker) return;
+    state.pawns[defender].forEach((pawn, i) => {
+      if (pawn.pos < 0 || pawn.pos >= 52) return;
+      const op = getPx(defender, i);
+      const dist = Math.hypot(op.x - myPx.x, op.y - myPx.y);
+      if (dist < C * 0.5) {
+        pawn.pos = -1;
+        showMsg(`${capitalize(attacker)} captured ${capitalize(defender)} pawn ${i+1}! 💥`);
+      }
+    });
+  });
+}
+
+function checkWin(player) {
+  const allHome = state.pawns[player].every(p => p.pos === 58);
+  if (allHome) {
+    setTimeout(() => {
+      alert(`🏆 ${capitalize(player).toUpperCase()} WINS! Congratulations! 🎉`);
+      resetGame();
+    }, 500);
+  }
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+let diceAnimInterval = null;
+
+function rollDice() {
+  if (state.rolled || state.animating) return;
+
+  state.animating = true;
+  document.getElementById('rollBtn').disabled = true;
+
+  let count = 0;
+  clearInterval(diceAnimInterval);
+
+  diceAnimInterval = setInterval(() => {
+    const tmp = Math.floor(Math.random() * 6) + 1;
+    drawDice(tmp);
+    count++;
+
+    if (count >= 12) {
+      clearInterval(diceAnimInterval);
+      const val = Math.floor(Math.random() * 6) + 1;
+      state.dice = val;
+      state.rolled = true;
+      state.animating = false;
+      drawDice(val);
+
+      document.getElementById('rollBtn').disabled = false;
+
+      const player = PLAYERS[state.turn];
+      const movable = getMovablePawns(player);
+
+      if (movable.length === 0) {
+        showMsg(`${capitalize(player)} rolled ${val} - No valid moves! ⏭️`);
+        setTimeout(() => {
+          if (val !== 6) state.turn = (state.turn + 1) % 4;
+          state.rolled = false;
+          updateUI();
+          drawAll();
+        }, 1200);
+      } else if (movable.length === 1) {
+        showMsg(`${capitalize(player)} rolled ${val}! Auto-moving pawn ${movable[0]+1}...`);
+        setTimeout(() => {
+          movePawn(player, movable[0]);
+        }, 600);
+      } else {
+        showMsg(`${capitalize(player)} rolled ${val}! Click a highlighted pawn to move.`);
+        updateUI();
+        drawAll();
+      }
+    }
+  }, 80);
+}
+
+function resetGame() {
+  clearInterval(diceAnimInterval);
+  state = {
+    turn: 0,
+    dice: 0,
+    rolled: false,
+    animating: false,
+    pawns: {
+      blue:   [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+      red:    [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+      green:  [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }],
+      yellow: [{ pos: -1 }, { pos: -1 }, { pos: -1 }, { pos: -1 }]
+    }
+  };
+  drawDice(0);
+  updateUI();
+  drawAll();
+}
+
+function showMsg(msg) {
+  document.getElementById('statusText').textContent = msg;
+}
+
+function updateUI() {
+  PLAYERS.forEach((p, i) => {
+    const badge = document.getElementById(`b${i}`);
+    if (i === state.turn) {
+      badge.classList.add('active');
+    } else {
+      badge.classList.remove('active');
+    }
+  });
+
+  if (!state.rolled) {
+    const player = capitalize(PLAYERS[state.turn]);
+    showMsg(`${player}'s turn - Roll the Dice! 🎲`);
+  }
+}
+
+// =====================
+// CLICK HANDLER
+// =====================
+canvas.addEventListener('click', (e) => {
+  if (!state.rolled || state.animating) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = SIZE / rect.width;
+  const scaleY = SIZE / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+
+  const player = PLAYERS[state.turn];
+
+  state.pawns[player].forEach((pawn, idx) => {
+    if (!canMove(player, idx)) return;
+    const px = getPx(player, idx);
+    const offset = getOffset(player, idx);
+    const dx = mx - (px.x + offset.x);
+    const dy = my - (px.y + offset.y);
+    const dist = Math.hypot(dx, dy);
+
+    if (dist < C * 0.55) {
+      movePawn(player, idx);
+    }
+  });
+});
+
+// =====================
+// START
+// =====================
+updateUI();
+drawDice(0);
+animate();
+</script>
+</body>
+</html>
